@@ -21,7 +21,30 @@ RSpec.describe Perchfall::Client do
     end.new
   end
 
-  subject(:client) { described_class.new(invoker: recording_invoker) }
+  # Each example gets its own limiter so tests are isolated from DEFAULT_LIMITER.
+  let(:limiter) { Perchfall::ConcurrencyLimiter.new(limit: 5) }
+
+  subject(:client) { described_class.new(invoker: recording_invoker, limiter: limiter) }
+
+  describe "concurrency limiting" do
+    it "raises ConcurrencyLimitError immediately when the limit is 0" do
+      tight = Perchfall::ConcurrencyLimiter.new(limit: 0, timeout_ms: 0)
+      expect { described_class.new(invoker: recording_invoker, limiter: tight).run(url: "https://example.com") }
+        .to raise_error(Perchfall::Errors::ConcurrencyLimitError)
+    end
+
+    it "does not invoke Playwright when the limit is exceeded" do
+      tight = Perchfall::ConcurrencyLimiter.new(limit: 0, timeout_ms: 0)
+      described_class.new(invoker: recording_invoker, limiter: tight).run(url: "https://example.com") rescue nil
+      expect(recording_invoker.last_url).to be_nil
+    end
+
+    it "releases the slot after a successful run" do
+      single = Perchfall::ConcurrencyLimiter.new(limit: 1)
+      described_class.new(invoker: recording_invoker, limiter: single).run(url: "https://example.com")
+      expect(single.available_slots).to eq(1)
+    end
+  end
 
   describe "URL validation" do
     it "rejects file:// URLs before invoking Playwright" do
@@ -62,8 +85,7 @@ RSpec.describe Perchfall::Client do
       def run(url:, **) = raise Perchfall::Errors::InvocationError, "node not found"
     end.new
 
-    client = described_class.new(invoker: raising_invoker)
-    expect { client.run(url: "https://example.com") }
+    expect { described_class.new(invoker: raising_invoker, limiter: limiter).run(url: "https://example.com") }
       .to raise_error(Perchfall::Errors::InvocationError, "node not found")
   end
 end

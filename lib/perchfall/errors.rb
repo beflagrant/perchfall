@@ -23,6 +23,10 @@ module Perchfall
     # The JSON the Node script produced was structurally invalid.
     class ParseError < Error; end
 
+    # The concurrency limit was reached and the caller's timeout expired
+    # before a slot became available.
+    class ConcurrencyLimitError < Error; end
+
     # The target URL was unreachable at the network/page level (Playwright
     # reported status: "error"). Carries the partial Report so callers can
     # inspect whatever was captured before failure.

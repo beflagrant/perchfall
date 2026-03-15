@@ -20,9 +20,14 @@ module Perchfall
   # Client is intentionally thin. It owns the public method signature
   # and delegates all real work to the invoker.
   class Client
-    def initialize(invoker: PlaywrightInvoker.new, validator: UrlValidator.new)
+    def initialize(
+      invoker:   PlaywrightInvoker.new,
+      validator: UrlValidator.new,
+      limiter:   Perchfall.default_limiter
+    )
       @invoker   = invoker
       @validator = validator
+      @limiter   = limiter
     end
 
     # Run a synthetic browser check against the given URL.
@@ -33,13 +38,14 @@ module Perchfall
     # @param timestamp [Time] override the run timestamp (default Time.now.utc)
     # @return [Report] on success
     # @raise [ArgumentError] if the URL is not http/https
+    # @raise [Errors::ConcurrencyLimitError] if the concurrency cap is reached
     # @raise [Errors::InvocationError] if Node could not be started
     # @raise [Errors::ScriptError] if the Node script exited non-zero
     # @raise [Errors::ParseError] if the script output was not valid JSON
     # @raise [Errors::PageLoadError] if the page itself failed to load
     def run(url:, **opts)
       @validator.validate!(url)
-      @invoker.run(url: url, **opts)
+      @limiter.acquire { @invoker.run(url: url, **opts) }
     end
   end
 end
