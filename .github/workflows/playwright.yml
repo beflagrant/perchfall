@@ -1,0 +1,82 @@
+name: Playwright smoke check
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: "URL to check (must be http or https)"
+        required: true
+        default: "https://example.com"
+      scenario_name:
+        description: "Optional scenario label"
+        required: false
+        default: ""
+      wait_until:
+        description: "Playwright waitUntil strategy"
+        required: false
+        default: "load"
+        type: choice
+        options:
+          - load
+          - domcontentloaded
+          - networkidle
+          - commit
+      timeout_ms:
+        description: "Playwright navigation timeout in milliseconds"
+        required: false
+        default: "30000"
+
+jobs:
+  smoke:
+    name: Run smoke check against ${{ inputs.url }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "4.0.1"
+          bundler-cache: true
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+
+      - name: Run smoke check
+        run: |
+          bundle exec ruby - <<'RUBY'
+            require "perchfall"
+
+            opts = {
+              timeout_ms:    Integer(ENV.fetch("TIMEOUT_MS")),
+              wait_until:    ENV.fetch("WAIT_UNTIL"),
+            }
+            opts[:scenario_name] = ENV["SCENARIO_NAME"] unless ENV["SCENARIO_NAME"].to_s.strip.empty?
+
+            begin
+              report = Perchfall.run(url: ENV.fetch("URL"), **opts)
+              puts report.to_json
+              exit report.ok? ? 0 : 1
+            rescue Perchfall::Errors::PageLoadError => e
+              puts e.report.to_json
+              exit 1
+            rescue Perchfall::Errors::Error => e
+              warn "Perchfall error (#{e.class}): #{e.message}"
+              exit 2
+            end
+          RUBY
+        env:
+          URL:           ${{ inputs.url }}
+          SCENARIO_NAME: ${{ inputs.scenario_name }}
+          WAIT_UNTIL:    ${{ inputs.wait_until }}
+          TIMEOUT_MS:    ${{ inputs.timeout_ms }}
