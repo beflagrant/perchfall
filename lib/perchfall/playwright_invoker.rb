@@ -1,0 +1,64 @@
+# frozen_string_literal: true
+
+module Perchfall
+  # Knows how to invoke the Playwright Node script and return a Report.
+  #
+  # Collaborators (all injectable):
+  #   runner      - responds to #call(argv_array) -> Result
+  #   parser      - responds to #parse(raw_json, **opts) -> Report
+  #   script_path - String path to playwright/check.js
+  #
+  # PlaywrightInvoker owns the command shape and error-promotion semantics.
+  # It does not know how to run a process (runner's job) or parse JSON (parser's job).
+  class PlaywrightInvoker
+    DEFAULT_SCRIPT_PATH = File.expand_path(
+      "../../playwright/check.js",
+      __dir__
+    ).freeze
+
+    def initialize(
+      runner: CommandRunner.new,
+      parser: Parsers::PlaywrightJsonParser.new,
+      script_path: DEFAULT_SCRIPT_PATH
+    )
+      @runner      = runner
+      @parser      = parser
+      @script_path = script_path
+    end
+
+    def run(url:, timeout_ms: 30_000, scenario_name: nil, timestamp: Time.now.utc, **_rest)
+      result = execute(build_command(url: url, timeout_ms: timeout_ms))
+      report = parse(result, scenario_name: scenario_name, timestamp: timestamp)
+      raise_if_page_load_error(report)
+      report
+    end
+
+    private
+
+    def build_command(url:, timeout_ms:)
+      ["node", @script_path, "--url", url, "--timeout", timeout_ms.to_s]
+    end
+
+    def execute(command)
+      @runner.call(command)
+    rescue => e
+      raise Errors::InvocationError, "Could not start Node process: #{e.message}"
+    end
+
+    def parse(result, **opts)
+      unless result.success?
+        raise Errors::ScriptError.new(
+          "Playwright script exited with status #{result.exit_status}",
+          exit_status: result.exit_status,
+          stderr:      result.stderr
+        )
+      end
+
+      @parser.parse(result.stdout, **opts)
+    end
+
+    def raise_if_page_load_error(report)
+      raise Errors::PageLoadError.new(report) unless report.ok?
+    end
+  end
+end

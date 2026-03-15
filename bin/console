@@ -1,0 +1,17 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "bundler/setup"
+require "perchfall"
+require "irb"
+
+puts "Perchfall #{Perchfall::VERSION} — synthetic browser monitoring"
+puts
+puts "Quick start:"
+puts "  report = Perchfall.run(url: 'https://example.com')"
+puts "  report.ok?         # => true"
+puts "  report.http_status # => 200"
+puts "  report.to_json     # => '{\"status\":\"ok\",...}'"
+puts
+
+IRB.start(__FILE__)
