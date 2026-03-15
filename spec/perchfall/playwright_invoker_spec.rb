@@ -45,7 +45,8 @@ RSpec.describe Perchfall::PlaywrightInvoker do
           "node",
           Perchfall::PlaywrightInvoker::DEFAULT_SCRIPT_PATH,
           "--url", "https://example.com",
-          "--timeout", "5000"
+          "--timeout", "5000",
+          "--wait-until", "load"
         ])
       end
 
