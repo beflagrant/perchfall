@@ -26,8 +26,8 @@ module Perchfall
       @script_path = script_path
     end
 
-    def run(url:, timeout_ms: 30_000, scenario_name: nil, timestamp: Time.now.utc, **_rest)
-      result = execute(build_command(url: url, timeout_ms: timeout_ms))
+    def run(url:, timeout_ms: 30_000, wait_until: "load", scenario_name: nil, timestamp: Time.now.utc, **_rest)
+      result = execute(build_command(url: url, timeout_ms: timeout_ms, wait_until: wait_until))
       report = parse(result, scenario_name: scenario_name, timestamp: timestamp)
       raise_if_page_load_error(report)
       report
@@ -35,8 +35,8 @@ module Perchfall
 
     private
 
-    def build_command(url:, timeout_ms:)
-      ["node", @script_path, "--url", url, "--timeout", timeout_ms.to_s]
+    def build_command(url:, timeout_ms:, wait_until:)
+      ["node", @script_path, "--url", url, "--timeout", timeout_ms.to_s, "--wait-until", wait_until]
     end
 
     def execute(command)

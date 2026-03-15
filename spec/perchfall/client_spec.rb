@@ -23,6 +23,24 @@ RSpec.describe Perchfall::Client do
 
   subject(:client) { described_class.new(invoker: recording_invoker) }
 
+  describe "URL validation" do
+    it "rejects file:// URLs before invoking Playwright" do
+      expect { client.run(url: "file:///etc/passwd") }
+        .to raise_error(ArgumentError, /file/)
+      expect(recording_invoker.last_url).to be_nil
+    end
+
+    it "rejects URLs with no scheme" do
+      expect { client.run(url: "example.com") }
+        .to raise_error(ArgumentError)
+    end
+
+    it "accepts http and https URLs" do
+      expect { client.run(url: "http://example.com") }.not_to raise_error
+      expect { client.run(url: "https://example.com") }.not_to raise_error
+    end
+  end
+
   it "delegates run to the invoker with the given url" do
     client.run(url: "https://example.com")
     expect(recording_invoker.last_url).to eq("https://example.com")

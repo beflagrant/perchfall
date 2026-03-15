@@ -20,8 +20,9 @@ const { parseArgs } = require("node:util");
 
 const { values: args } = parseArgs({
   options: {
-    url:     { type: "string" },
-    timeout: { type: "string", default: "30000" },
+    url:        { type: "string" },
+    timeout:    { type: "string", default: "30000" },
+    "wait-until": { type: "string", default: "load" },
   },
   strict: true,
 });
@@ -33,6 +34,7 @@ if (!args.url) {
 
 const TARGET_URL  = args.url;
 const TIMEOUT_MS  = parseInt(args.timeout, 10);
+const WAIT_UNTIL  = args["wait-until"];
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -99,7 +101,7 @@ async function run() {
 
     const response = await page.goto(TARGET_URL, {
       timeout:   TIMEOUT_MS,
-      waitUntil: "networkidle",
+      waitUntil: WAIT_UNTIL,
     });
 
     const durationMs = Date.now() - startedAt;
