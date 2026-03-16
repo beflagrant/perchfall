@@ -74,6 +74,50 @@ RSpec.describe Perchfall::Client do
     expect(recording_invoker.last_opts).to include(timeout_ms: 9_000, scenario_name: "smoke")
   end
 
+  describe "wait_until validation" do
+    it "accepts the four valid Playwright strategies" do
+      %w[load domcontentloaded networkidle commit].each do |value|
+        expect { client.run(url: "https://example.com", wait_until: value) }.not_to raise_error
+      end
+    end
+
+    it "rejects an unknown wait_until value" do
+      expect { client.run(url: "https://example.com", wait_until: "notavalidvalue") }
+        .to raise_error(ArgumentError, /wait_until/)
+    end
+
+    it "rejects wait_until before invoking Playwright" do
+      client.run(url: "https://example.com", wait_until: "bogus") rescue nil
+      expect(recording_invoker.last_url).to be_nil
+    end
+  end
+
+  describe "timeout_ms validation" do
+    it "accepts a positive integer" do
+      expect { client.run(url: "https://example.com", timeout_ms: 10_000) }.not_to raise_error
+    end
+
+    it "rejects zero" do
+      expect { client.run(url: "https://example.com", timeout_ms: 0) }
+        .to raise_error(ArgumentError, /timeout_ms/)
+    end
+
+    it "rejects a negative value" do
+      expect { client.run(url: "https://example.com", timeout_ms: -1) }
+        .to raise_error(ArgumentError, /timeout_ms/)
+    end
+
+    it "rejects a non-integer" do
+      expect { client.run(url: "https://example.com", timeout_ms: "abc") }
+        .to raise_error(ArgumentError, /timeout_ms/)
+    end
+
+    it "rejects timeout_ms before invoking Playwright" do
+      client.run(url: "https://example.com", timeout_ms: -1) rescue nil
+      expect(recording_invoker.last_url).to be_nil
+    end
+  end
+
   describe "ignore rules" do
     it "merges caller rules with DEFAULT_IGNORE_RULES and forwards them" do
       extra_rule = Perchfall::IgnoreRule.new(pattern: "shop.app", type: "HTTP 403", target: :network)

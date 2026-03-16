@@ -43,10 +43,30 @@ module Perchfall
     # @raise [Errors::ScriptError] if the Node script exited non-zero
     # @raise [Errors::ParseError] if the script output was not valid JSON
     # @raise [Errors::PageLoadError] if the page itself failed to load
-    def run(url:, ignore: [], **opts)
+    VALID_WAIT_UNTIL = %w[load domcontentloaded networkidle commit].freeze
+
+    def run(url:, ignore: [], wait_until: "load", timeout_ms: 30_000, **opts)
       @validator.validate!(url)
+      validate_wait_until!(wait_until)
+      validate_timeout_ms!(timeout_ms)
       merged_ignore = Perchfall::DEFAULT_IGNORE_RULES + ignore
-      @limiter.acquire { @invoker.run(url: url, ignore: merged_ignore, **opts) }
+      @limiter.acquire { @invoker.run(url: url, ignore: merged_ignore, wait_until: wait_until, timeout_ms: timeout_ms, **opts) }
+    end
+
+    private
+
+    def validate_wait_until!(value)
+      return if VALID_WAIT_UNTIL.include?(value)
+
+      raise ArgumentError,
+            "wait_until must be one of #{VALID_WAIT_UNTIL.join(", ")}. Got: #{value.inspect}"
+    end
+
+    def validate_timeout_ms!(value)
+      return if value.is_a?(Integer) && value > 0
+
+      raise ArgumentError,
+            "timeout_ms must be a positive integer. Got: #{value.inspect}"
     end
   end
 end
