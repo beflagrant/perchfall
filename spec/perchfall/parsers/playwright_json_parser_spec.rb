@@ -40,7 +40,8 @@ RSpec.describe Perchfall::Parsers::PlaywrightJsonParser do
     end
 
     context "with network_errors in the payload" do
-      let(:json) { ok_json(network_errors: [network_error_entry]) }
+      let(:real_failure_entry) { network_error_entry(failure: "net::ERR_NAME_NOT_RESOLVED") }
+      let(:json) { ok_json(network_errors: [real_failure_entry]) }
 
       it "parses into NetworkError objects" do
         report = parser.parse(json)
@@ -52,7 +53,35 @@ RSpec.describe Perchfall::Parsers::PlaywrightJsonParser do
         ne = parser.parse(json).network_errors.first
         expect(ne.url).to eq("https://example.com/app.js")
         expect(ne.method).to eq("GET")
-        expect(ne.failure).to eq("net::ERR_ABORTED")
+        expect(ne.failure).to eq("net::ERR_NAME_NOT_RESOLVED")
+      end
+    end
+
+    context "with ERR_ABORTED network errors (browser-aborted requests)" do
+      it "excludes ERR_ABORTED entries from network_errors" do
+        aborted_entry = network_error_entry(failure: "net::ERR_ABORTED")
+        json = ok_json(network_errors: [aborted_entry])
+        report = parser.parse(json)
+        expect(report.network_errors).to be_empty
+      end
+
+      it "keeps real failures alongside aborted ones" do
+        aborted  = network_error_entry(failure: "net::ERR_ABORTED")
+        real     = network_error_entry(url: "https://example.com/api.js", failure: "net::ERR_CONNECTION_REFUSED")
+        json     = ok_json(network_errors: [aborted, real])
+        report   = parser.parse(json)
+        expect(report.network_errors.length).to eq(1)
+        expect(report.network_errors.first.failure).to eq("net::ERR_CONNECTION_REFUSED")
+      end
+
+      it "returns an empty array when all errors are ERR_ABORTED" do
+        entries = [
+          network_error_entry(url: "https://analytics.google.com/g/collect", failure: "net::ERR_ABORTED"),
+          network_error_entry(url: "https://www.google-analytics.com/g/collect", failure: "net::ERR_ABORTED"),
+        ]
+        json   = ok_json(network_errors: entries)
+        report = parser.parse(json)
+        expect(report.network_errors).to be_empty
       end
     end
 

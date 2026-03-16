@@ -34,8 +34,11 @@ module Perchfall
         raise Errors::ParseError, "Playwright JSON missing required field: #{e.message}"
       end
 
+      ABORTED_FAILURE = "net::ERR_ABORTED"
+      private_constant :ABORTED_FAILURE
+
       def parse_network_errors(raw)
-        raw.map do |item|
+        raw.reject { |item| item[:failure] == ABORTED_FAILURE }.map do |item|
           NetworkError.new(
             url:     item.fetch(:url),
             method:  item.fetch(:method),
