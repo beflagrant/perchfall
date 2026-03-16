@@ -1,10 +1,13 @@
-require 'perchfall'
+# frozen_string_literal: true
 
-report = Perchfall.run(url: 'https://www.beflagrant.com')
+require './lib/perchfall'
 
-report.ok?           # => true
-report.http_status   # => 200
-report.duration_ms   # => 834
-report.network_errors  # => []   (Array<Perchfall::NetworkError>)
-report.console_errors  # => []   (Array<Perchfall::ConsoleError>)
-report.to_json # => '{"status":"ok","url":"https://example.com",...}'
+report = Perchfall.run(url: 'https://example.com')
+
+if report.ok?
+  puts "#{report.url} loaded in #{report.duration_ms}ms"
+  puts '*' * 40
+  puts report.to_json
+else
+  puts "Page failed: #{report.network_errors.map(&:failure).join(', ')}"
+end
