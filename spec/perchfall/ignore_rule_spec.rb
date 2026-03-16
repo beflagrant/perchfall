@@ -3,81 +3,85 @@
 require "spec_helper"
 
 RSpec.describe Perchfall::IgnoreRule do
-  def make_error(url: "https://example.com/app.js", failure: "HTTP 403")
-    Perchfall::NetworkError.new(url: url, method: "GET", failure: failure)
+  describe "#match?" do
+    context "with string pattern (substring)" do
+      subject(:rule) { described_class.new(pattern: "shop.app/pay", type: "HTTP 403", target: :network) }
+
+      it "matches when pattern is a substring of primary and type matches" do
+        expect(rule.match?("https://shop.app/pay?foo=bar", "HTTP 403")).to be true
+      end
+
+      it "does not match when primary does not contain the pattern" do
+        expect(rule.match?("https://other.com/pay", "HTTP 403")).to be false
+      end
+
+      it "does not match when type differs" do
+        expect(rule.match?("https://shop.app/pay", "HTTP 500")).to be false
+      end
+    end
+
+    context "with regex pattern" do
+      subject(:rule) { described_class.new(pattern: /google-analytics\.com/, type: "net::ERR_ABORTED", target: :network) }
+
+      it "matches when primary matches the regex and type matches" do
+        expect(rule.match?("https://www.google-analytics.com/g/collect", "net::ERR_ABORTED")).to be true
+      end
+
+      it "does not match when primary does not match the regex" do
+        expect(rule.match?("https://example.com/track", "net::ERR_ABORTED")).to be false
+      end
+    end
+
+    context "with wildcard type ('*')" do
+      subject(:rule) { described_class.new(pattern: "shop.app", type: "*", target: :network) }
+
+      it "matches any type when pattern matches" do
+        expect(rule.match?("https://shop.app/pay", "HTTP 403")).to be true
+        expect(rule.match?("https://shop.app/pay", "HTTP 500")).to be true
+      end
+
+      it "does not match when primary does not match" do
+        expect(rule.match?("https://other.com/pay", "HTTP 403")).to be false
+      end
+    end
+
+    context "with regex type" do
+      subject(:rule) { described_class.new(pattern: "example.com", type: /HTTP \d{3}/, target: :network) }
+
+      it "matches when type matches the regex" do
+        expect(rule.match?("https://example.com/app.js", "HTTP 403")).to be true
+        expect(rule.match?("https://example.com/app.js", "HTTP 500")).to be true
+      end
+
+      it "does not match when type does not match the regex" do
+        expect(rule.match?("https://example.com/app.js", "net::ERR_ABORTED")).to be false
+      end
+    end
+
+    context "with string type (substring)" do
+      subject(:rule) { described_class.new(pattern: "example.com", type: "ERR_ABORTED", target: :network) }
+
+      it "matches when type contains the substring" do
+        expect(rule.match?("https://example.com/app.js", "net::ERR_ABORTED")).to be true
+      end
+
+      it "does not match when type does not contain the substring" do
+        expect(rule.match?("https://example.com/app.js", "HTTP 403")).to be false
+      end
+    end
   end
 
-  describe "#match?" do
-    context "with string url_pattern (substring)" do
-      subject(:rule) { described_class.new(url_pattern: "shop.app/pay", failure: "HTTP 403") }
-
-      it "matches when url contains the pattern and failure matches" do
-        error = make_error(url: "https://shop.app/pay?foo=bar", failure: "HTTP 403")
-        expect(rule.match?(error)).to be true
-      end
-
-      it "does not match when url does not contain the pattern" do
-        error = make_error(url: "https://other.com/pay", failure: "HTTP 403")
-        expect(rule.match?(error)).to be false
-      end
-
-      it "does not match when failure differs" do
-        error = make_error(url: "https://shop.app/pay", failure: "HTTP 500")
-        expect(rule.match?(error)).to be false
-      end
+  describe "#target" do
+    it "accepts :network" do
+      expect(described_class.new(pattern: //, type: "*", target: :network).target).to eq(:network)
     end
 
-    context "with regex url_pattern" do
-      subject(:rule) { described_class.new(url_pattern: /google-analytics\.com/, failure: "net::ERR_ABORTED") }
-
-      it "matches when url matches the regex and failure matches" do
-        error = make_error(url: "https://www.google-analytics.com/g/collect", failure: "net::ERR_ABORTED")
-        expect(rule.match?(error)).to be true
-      end
-
-      it "does not match when url does not match the regex" do
-        error = make_error(url: "https://example.com/track", failure: "net::ERR_ABORTED")
-        expect(rule.match?(error)).to be false
-      end
+    it "accepts :console" do
+      expect(described_class.new(pattern: //, type: "*", target: :console).target).to eq(:console)
     end
 
-    context "with wildcard failure ('*')" do
-      subject(:rule) { described_class.new(url_pattern: "shop.app", failure: "*") }
-
-      it "matches any failure for matching url" do
-        expect(rule.match?(make_error(url: "https://shop.app/pay", failure: "HTTP 403"))).to be true
-        expect(rule.match?(make_error(url: "https://shop.app/pay", failure: "HTTP 500"))).to be true
-        expect(rule.match?(make_error(url: "https://shop.app/pay", failure: "net::ERR_ABORTED"))).to be true
-      end
-
-      it "does not match when url does not match" do
-        expect(rule.match?(make_error(url: "https://other.com/pay", failure: "HTTP 403"))).to be false
-      end
-    end
-
-    context "with regex failure" do
-      subject(:rule) { described_class.new(url_pattern: "example.com", failure: /HTTP \d{3}/) }
-
-      it "matches when failure matches the regex" do
-        expect(rule.match?(make_error(failure: "HTTP 403"))).to be true
-        expect(rule.match?(make_error(failure: "HTTP 500"))).to be true
-      end
-
-      it "does not match when failure does not match the regex" do
-        expect(rule.match?(make_error(failure: "net::ERR_ABORTED"))).to be false
-      end
-    end
-
-    context "with string failure (substring)" do
-      subject(:rule) { described_class.new(url_pattern: "example.com", failure: "ERR_ABORTED") }
-
-      it "matches when failure contains the substring" do
-        expect(rule.match?(make_error(failure: "net::ERR_ABORTED"))).to be true
-      end
-
-      it "does not match when failure does not contain the substring" do
-        expect(rule.match?(make_error(failure: "HTTP 403"))).to be false
-      end
+    it "accepts :all" do
+      expect(described_class.new(pattern: //, type: "*", target: :all).target).to eq(:all)
     end
   end
 end

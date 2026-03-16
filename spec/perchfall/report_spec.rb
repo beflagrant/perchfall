@@ -21,6 +21,12 @@ RSpec.describe Perchfall::Report do
       report = build_report(ignored_network_errors: [ne])
       expect(report.ignored_network_errors).to be_frozen
     end
+
+    it "freezes ignored_console_errors array" do
+      ce = Perchfall::ConsoleError.new(type: "error", text: "boom", location: "https://example.com:1:1")
+      report = build_report(ignored_console_errors: [ce])
+      expect(report.ignored_console_errors).to be_frozen
+    end
   end
 
   describe "#ok?" do
@@ -38,7 +44,10 @@ RSpec.describe Perchfall::Report do
       h = build_report.to_h
       expect(h.keys).to contain_exactly(
         :status, :url, :scenario_name, :timestamp, :ok,
-        :http_status, :duration_ms, :network_errors, :ignored_network_errors, :console_errors, :error
+        :http_status, :duration_ms,
+        :network_errors, :ignored_network_errors,
+        :console_errors, :ignored_console_errors,
+        :error
       )
     end
 
@@ -47,6 +56,14 @@ RSpec.describe Perchfall::Report do
       report = build_report(ignored_network_errors: [ne])
       expect(report.to_h[:ignored_network_errors]).to eq([
         { url: "https://shop.app/pay", method: "GET", failure: "HTTP 403" }
+      ])
+    end
+
+    it "serializes ignored_console_errors as plain hashes" do
+      ce = Perchfall::ConsoleError.new(type: "error", text: "boom", location: "https://example.com:10:1")
+      report = build_report(ignored_console_errors: [ce])
+      expect(report.to_h[:ignored_console_errors]).to eq([
+        { type: "error", text: "boom", location: "https://example.com:10:1" }
       ])
     end
 

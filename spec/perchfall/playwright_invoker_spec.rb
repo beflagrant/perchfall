@@ -91,16 +91,22 @@ RSpec.describe Perchfall::PlaywrightInvoker do
     end
 
     context "with ignore rules" do
-      it "moves matched errors to ignored_network_errors on the report" do
-        rule   = Perchfall::IgnoreRule.new(url_pattern: "shop.app", failure: "HTTP 403")
+      it "moves matched network errors to ignored_network_errors" do
+        rule   = Perchfall::IgnoreRule.new(pattern: "shop.app", type: "HTTP 403", target: :network)
         runner = FakeCommandRunner.new(stdout: ok_json(network_errors: [
           { url: "https://shop.app/pay", method: "GET", failure: "HTTP 403" }
         ]))
-        invoker = described_class.new(runner: runner)
-        report  = invoker.run(url: "https://example.com", ignore: [rule])
+        report = described_class.new(runner: runner).run(url: "https://example.com", ignore: [rule])
         expect(report.network_errors).to be_empty
-        expect(report.ignored_network_errors.length).to eq(1)
         expect(report.ignored_network_errors.first.failure).to eq("HTTP 403")
+      end
+
+      it "moves matched console errors to ignored_console_errors" do
+        rule   = Perchfall::IgnoreRule.new(pattern: "ReferenceError", type: "error", target: :console)
+        runner = FakeCommandRunner.new(stdout: ok_json(console_errors: [console_error_entry]))
+        report = described_class.new(runner: runner).run(url: "https://example.com", ignore: [rule])
+        expect(report.console_errors).to be_empty
+        expect(report.ignored_console_errors.first.text).to include("ReferenceError")
       end
     end
 

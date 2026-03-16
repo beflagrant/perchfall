@@ -14,11 +14,13 @@ module Perchfall
   #   http_status            - Integer or nil: HTTP response code, nil if page never loaded
   #   network_errors         - Array<NetworkError>: failures not matched by any ignore rule
   #   ignored_network_errors - Array<NetworkError>: failures suppressed by ignore rules
-  #   console_errors         - Array<ConsoleError>
+  #   console_errors         - Array<ConsoleError>: errors not matched by any ignore rule
+  #   ignored_console_errors - Array<ConsoleError>: errors suppressed by ignore rules
   #   error                  - String or nil: set only when status == "error"
   class Report
     attr_reader :status, :url, :scenario_name, :timestamp, :duration_ms,
-                :http_status, :network_errors, :ignored_network_errors, :console_errors, :error
+                :http_status, :network_errors, :ignored_network_errors,
+                :console_errors, :ignored_console_errors, :error
 
     def initialize(
       status:,
@@ -29,6 +31,7 @@ module Perchfall
       console_errors:,
       error:,
       ignored_network_errors: [],
+      ignored_console_errors: [],
       scenario_name: nil,
       timestamp: Time.now.utc
     )
@@ -41,6 +44,7 @@ module Perchfall
       @network_errors         = network_errors.freeze
       @ignored_network_errors = ignored_network_errors.freeze
       @console_errors         = console_errors.freeze
+      @ignored_console_errors = ignored_console_errors.freeze
       @error                  = error&.freeze
       freeze
     end
@@ -61,6 +65,7 @@ module Perchfall
         network_errors:         network_errors.map(&:to_h),
         ignored_network_errors: ignored_network_errors.map(&:to_h),
         console_errors:         console_errors.map(&:to_h),
+        ignored_console_errors: ignored_console_errors.map(&:to_h),
         error:          error
       }
     end

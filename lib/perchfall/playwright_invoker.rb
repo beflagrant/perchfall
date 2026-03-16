@@ -35,9 +35,7 @@ module Perchfall
     private
 
     def build_parser(ignore_rules)
-      Parsers::PlaywrightJsonParser.new(
-        filter: NetworkErrorFilter.new(rules: ignore_rules)
-      )
+      Parsers::PlaywrightJsonParser.new(filter: ErrorFilter.new(rules: ignore_rules))
     end
 
     def build_command(url:, timeout_ms:, wait_until:)

@@ -76,7 +76,7 @@ RSpec.describe Perchfall::Client do
 
   describe "ignore rules" do
     it "merges caller rules with DEFAULT_IGNORE_RULES and forwards them" do
-      extra_rule = Perchfall::IgnoreRule.new(url_pattern: "shop.app", failure: "HTTP 403")
+      extra_rule = Perchfall::IgnoreRule.new(pattern: "shop.app", type: "HTTP 403", target: :network)
       client.run(url: "https://example.com", ignore: [extra_rule])
       forwarded = recording_invoker.last_opts[:ignore]
       expect(forwarded).to include(*Perchfall::DEFAULT_IGNORE_RULES)

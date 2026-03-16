@@ -9,7 +9,7 @@ module Perchfall
     # This is the only place where raw data becomes domain objects.
     # No side effects — pure data transformation, fully unit-testable with strings.
     class PlaywrightJsonParser
-      def initialize(filter: NetworkErrorFilter.new(rules: []))
+      def initialize(filter: ErrorFilter.new(rules: []))
         @filter = filter
       end
 
@@ -23,17 +23,18 @@ module Perchfall
       private
 
       def build_report(data, scenario_name:, timestamp:)
-        all_network_errors = parse_network_errors(data.fetch(:network_errors, []))
-        filtered           = @filter.filter(all_network_errors)
+        net_filtered     = @filter.filter_network(parse_network_errors(data.fetch(:network_errors, [])))
+        console_filtered = @filter.filter_console(parse_console_errors(data.fetch(:console_errors, [])))
 
         Report.new(
           status:                 data.fetch(:status),
           url:                    data.fetch(:url),
           duration_ms:            data.fetch(:duration_ms),
           http_status:            data[:http_status],
-          network_errors:         filtered[:kept],
-          ignored_network_errors: filtered[:ignored],
-          console_errors:         parse_console_errors(data.fetch(:console_errors, [])),
+          network_errors:         net_filtered[:kept],
+          ignored_network_errors: net_filtered[:ignored],
+          console_errors:         console_filtered[:kept],
+          ignored_console_errors: console_filtered[:ignored],
           error:                  data[:error],
           scenario_name:          scenario_name,
           timestamp:              timestamp

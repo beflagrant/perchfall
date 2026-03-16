@@ -5,8 +5,8 @@ require "spec_helper"
 RSpec.describe Perchfall::Parsers::PlaywrightJsonParser do
   include PlaywrightJsonFixture
 
-  let(:aborted_rule) { Perchfall::IgnoreRule.new(url_pattern: //, failure: "net::ERR_ABORTED") }
-  let(:aborted_filter) { Perchfall::NetworkErrorFilter.new(rules: [aborted_rule]) }
+  let(:aborted_rule)   { Perchfall::IgnoreRule.new(pattern: //, type: "net::ERR_ABORTED", target: :network) }
+  let(:ref_error_rule) { Perchfall::IgnoreRule.new(pattern: "ReferenceError", type: "error", target: :console) }
 
   subject(:parser) { described_class.new }
 
@@ -15,8 +15,7 @@ RSpec.describe Perchfall::Parsers::PlaywrightJsonParser do
   describe "#parse" do
     context "with a valid ok payload" do
       it "returns a Report" do
-        report = parser.parse(ok_json)
-        expect(report).to be_a(Perchfall::Report)
+        expect(parser.parse(ok_json)).to be_a(Perchfall::Report)
       end
 
       it "maps status, url, duration_ms, http_status" do
@@ -60,40 +59,6 @@ RSpec.describe Perchfall::Parsers::PlaywrightJsonParser do
       end
     end
 
-    context "with an injected filter that suppresses ERR_ABORTED" do
-      subject(:parser) { described_class.new(filter: aborted_filter) }
-
-      it "excludes ERR_ABORTED entries from network_errors" do
-        json   = ok_json(network_errors: [network_error_entry(failure: "net::ERR_ABORTED")])
-        report = parser.parse(json)
-        expect(report.network_errors).to be_empty
-      end
-
-      it "moves ERR_ABORTED entries to ignored_network_errors" do
-        json   = ok_json(network_errors: [network_error_entry(failure: "net::ERR_ABORTED")])
-        report = parser.parse(json)
-        expect(report.ignored_network_errors.length).to eq(1)
-        expect(report.ignored_network_errors.first.failure).to eq("net::ERR_ABORTED")
-      end
-
-      it "keeps real failures in network_errors" do
-        aborted = network_error_entry(failure: "net::ERR_ABORTED")
-        real    = network_error_entry(url: "https://example.com/api.js", failure: "net::ERR_CONNECTION_REFUSED")
-        report  = parser.parse(ok_json(network_errors: [aborted, real]))
-        expect(report.network_errors.map(&:failure)).to eq(["net::ERR_CONNECTION_REFUSED"])
-        expect(report.ignored_network_errors.map(&:failure)).to eq(["net::ERR_ABORTED"])
-      end
-    end
-
-    context "with no filter (default)" do
-      it "puts all network_errors in network_errors and none in ignored" do
-        json   = ok_json(network_errors: [network_error_entry(failure: "net::ERR_ABORTED")])
-        report = parser.parse(json)
-        expect(report.network_errors.length).to eq(1)
-        expect(report.ignored_network_errors).to be_empty
-      end
-    end
-
     context "with console_errors in the payload" do
       let(:json) { ok_json(console_errors: [console_error_entry]) }
 
@@ -108,6 +73,57 @@ RSpec.describe Perchfall::Parsers::PlaywrightJsonParser do
         expect(ce.type).to eq("error")
         expect(ce.text).to eq("Uncaught ReferenceError: foo is not defined")
         expect(ce.location).to eq("https://example.com/app.js:10:5")
+      end
+    end
+
+    context "with no filter (default)" do
+      it "puts all network_errors in network_errors and none in ignored" do
+        json   = ok_json(network_errors: [network_error_entry(failure: "net::ERR_ABORTED")])
+        report = parser.parse(json)
+        expect(report.network_errors.length).to eq(1)
+        expect(report.ignored_network_errors).to be_empty
+      end
+
+      it "puts all console_errors in console_errors and none in ignored" do
+        json   = ok_json(console_errors: [console_error_entry])
+        report = parser.parse(json)
+        expect(report.console_errors.length).to eq(1)
+        expect(report.ignored_console_errors).to be_empty
+      end
+    end
+
+    context "with an injected ErrorFilter" do
+      subject(:parser) do
+        described_class.new(filter: Perchfall::ErrorFilter.new(rules: [aborted_rule, ref_error_rule]))
+      end
+
+      it "moves ERR_ABORTED network errors to ignored_network_errors" do
+        json   = ok_json(network_errors: [network_error_entry(failure: "net::ERR_ABORTED")])
+        report = parser.parse(json)
+        expect(report.network_errors).to be_empty
+        expect(report.ignored_network_errors.first.failure).to eq("net::ERR_ABORTED")
+      end
+
+      it "keeps real network failures in network_errors" do
+        aborted = network_error_entry(failure: "net::ERR_ABORTED")
+        real    = network_error_entry(url: "https://example.com/api.js", failure: "net::ERR_CONNECTION_REFUSED")
+        report  = parser.parse(ok_json(network_errors: [aborted, real]))
+        expect(report.network_errors.map(&:failure)).to eq(["net::ERR_CONNECTION_REFUSED"])
+        expect(report.ignored_network_errors.map(&:failure)).to eq(["net::ERR_ABORTED"])
+      end
+
+      it "moves matched console errors to ignored_console_errors" do
+        json   = ok_json(console_errors: [console_error_entry])
+        report = parser.parse(json)
+        expect(report.console_errors).to be_empty
+        expect(report.ignored_console_errors.first.text).to eq("Uncaught ReferenceError: foo is not defined")
+      end
+
+      it "keeps unmatched console errors in console_errors" do
+        unmatched = console_error_entry(text: "SyntaxError: unexpected token")
+        report    = parser.parse(ok_json(console_errors: [console_error_entry, unmatched]))
+        expect(report.console_errors.map(&:text)).to eq(["SyntaxError: unexpected token"])
+        expect(report.ignored_console_errors.map(&:text)).to eq(["Uncaught ReferenceError: foo is not defined"])
       end
     end
 
@@ -129,7 +145,7 @@ RSpec.describe Perchfall::Parsers::PlaywrightJsonParser do
 
     context "with missing required field" do
       it "raises ParseError naming the field" do
-        json = { status: "ok" }.to_json  # missing url, duration_ms, etc.
+        json = { status: "ok" }.to_json
         expect { parser.parse(json) }
           .to raise_error(Perchfall::Errors::ParseError, /missing required field/)
       end
@@ -137,7 +153,7 @@ RSpec.describe Perchfall::Parsers::PlaywrightJsonParser do
 
     context "with a malformed network_error entry" do
       it "raises ParseError" do
-        json = ok_json(network_errors: [{ url: "https://x.com" }])  # missing method, failure
+        json = ok_json(network_errors: [{ url: "https://x.com" }])
         expect { parser.parse(json) }
           .to raise_error(Perchfall::Errors::ParseError, /Malformed network_error/)
       end
@@ -145,7 +161,7 @@ RSpec.describe Perchfall::Parsers::PlaywrightJsonParser do
 
     context "with a malformed console_error entry" do
       it "raises ParseError" do
-        json = ok_json(console_errors: [{ text: "boom" }])  # missing type, location
+        json = ok_json(console_errors: [{ text: "boom" }])
         expect { parser.parse(json) }
           .to raise_error(Perchfall::Errors::ParseError, /Malformed console_error/)
       end

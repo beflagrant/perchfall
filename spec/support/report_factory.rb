@@ -12,6 +12,7 @@ module ReportFactory
       network_errors:         [],
       ignored_network_errors: [],
       console_errors:         [],
+      ignored_console_errors: [],
       error:          nil
     }
     Perchfall::Report.new(**defaults.merge(overrides))

@@ -1,31 +1,38 @@
 # frozen_string_literal: true
 
 module Perchfall
-  # Describes a single network-error suppression rule.
+  # Describes a single error suppression rule applicable to NetworkError,
+  # ConsoleError, or both.
   #
-  # url_pattern - String (substring match) or Regexp matched against NetworkError#url.
-  # failure     - String (substring match), Regexp, or "*" (wildcard) matched against NetworkError#failure.
+  # pattern - String (substring match) or Regexp matched against the primary field:
+  #           NetworkError#url or ConsoleError#text.
+  # type    - String (substring match), Regexp, or "*" (wildcard) matched against
+  #           the secondary field: NetworkError#failure or ConsoleError#type.
+  # target  - Symbol: :network, :console, or :all — which error type this rule applies to.
   #
-  # A rule matches a NetworkError when both url_pattern and failure match.
-  IgnoreRule = Data.define(:url_pattern, :failure) do
-    def match?(network_error)
-      url_matches?(network_error.url) && failure_matches?(network_error.failure)
+  # A rule matches when both pattern and type match their respective values.
+  # The filter is responsible for routing rules to the correct error type via target.
+  IgnoreRule = Data.define(:pattern, :type, :target) do
+    # @param primary   [String] the primary field value (url or text)
+    # @param secondary [String] the secondary field value (failure or type)
+    def match?(primary, secondary)
+      pattern_matches?(primary) && type_matches?(secondary)
     end
 
     private
 
-    def url_matches?(url)
-      case url_pattern
-      when Regexp then url_pattern.match?(url)
-      else             url.include?(url_pattern)
+    def pattern_matches?(value)
+      case pattern
+      when Regexp then pattern.match?(value)
+      else             value.include?(pattern)
       end
     end
 
-    def failure_matches?(error_failure)
-      case failure
+    def type_matches?(value)
+      case type
       when "*"    then true
-      when Regexp then failure.match?(error_failure)
-      else             error_failure.include?(failure)
+      when Regexp then type.match?(value)
+      else             value.include?(type)
       end
     end
   end
