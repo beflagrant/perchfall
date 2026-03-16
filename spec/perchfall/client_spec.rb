@@ -98,8 +98,12 @@ RSpec.describe Perchfall::Client do
   end
 
   describe "timeout_ms validation" do
-    it "accepts a positive integer" do
+    it "accepts a positive integer within the limit" do
       expect { client.run(url: "https://example.com", timeout_ms: 10_000) }.not_to raise_error
+    end
+
+    it "accepts the maximum allowed value" do
+      expect { client.run(url: "https://example.com", timeout_ms: 60_000) }.not_to raise_error
     end
 
     it "rejects zero" do
@@ -114,6 +118,11 @@ RSpec.describe Perchfall::Client do
 
     it "rejects a non-integer" do
       expect { client.run(url: "https://example.com", timeout_ms: "abc") }
+        .to raise_error(ArgumentError, /timeout_ms/)
+    end
+
+    it "rejects a value above 60_000" do
+      expect { client.run(url: "https://example.com", timeout_ms: 60_001) }
         .to raise_error(ArgumentError, /timeout_ms/)
     end
 

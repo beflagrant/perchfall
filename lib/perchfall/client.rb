@@ -72,11 +72,13 @@ module Perchfall
             "wait_until must be one of #{VALID_WAIT_UNTIL.join(", ")}. Got: #{value.inspect}"
     end
 
+    MAX_TIMEOUT_MS = 60_000
+
     def validate_timeout_ms!(value)
-      return if value.is_a?(Integer) && value > 0
+      return if value.is_a?(Integer) && value > 0 && value <= MAX_TIMEOUT_MS
 
       raise ArgumentError,
-            "timeout_ms must be a positive integer. Got: #{value.inspect}"
+            "timeout_ms must be a positive integer no greater than #{MAX_TIMEOUT_MS}. Got: #{value.inspect}"
     end
   end
 end
