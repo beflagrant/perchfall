@@ -34,6 +34,7 @@ Gem::Specification.new do |spec|
   # json is in stdlib but declared explicitly so bundler resolves it correctly
   spec.add_dependency "json", ">= 2.0"
 
-  spec.add_development_dependency "rspec",    "~> 3.13"
-  spec.add_development_dependency "rubocop",  "~> 1.70"
+  spec.add_development_dependency "rspec",      "~> 3.13"
+  spec.add_development_dependency "rubocop",    "~> 1.70"
+  spec.add_development_dependency "simplecov",  "~> 0.22"
 end
