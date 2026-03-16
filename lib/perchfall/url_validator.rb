@@ -2,18 +2,23 @@
 
 require "uri"
 require "ipaddr"
+require "resolv"
 
 module Perchfall
   # Validates that a URL is safe to pass to Playwright.
   #
-  # Two checks are applied in order:
+  # Three checks are applied in order:
   #   1. Scheme must be http or https.
-  #   2. Hostname must not be a known-internal literal address.
+  #   2. Hostname must not be a known-internal literal address (literal IP or "localhost").
+  #   3. Hostname is resolved via DNS; any address in a blocked range is rejected.
   #
-  # LIMITATION: a public DNS name that resolves to a private IP is NOT blocked.
-  # Blocking post-resolution addresses requires network-level egress filtering
-  # (security groups, firewall rules) and cannot be done safely here without
-  # introducing a TOCTOU race between validation and Playwright's own DNS lookup.
+  # Check 3 shrinks the DNS rebinding window but does not eliminate it — a TOCTOU
+  # race remains between our resolution and Playwright's. Network-level egress
+  # filtering (security groups, firewall rules) is still required as the authoritative
+  # control when accepting untrusted URLs.
+  #
+  # The resolver: keyword argument is injectable for testing (pass a fake that
+  # responds to #getaddresses(hostname) → Array<String>).
   class UrlValidator
     PERMITTED_SCHEMES = %w[http https].freeze
 
@@ -33,10 +38,15 @@ module Perchfall
       IPAddr.new("0.0.0.0/8"),         # unroutable
     ].freeze
 
+    def initialize(resolver: Resolv)
+      @resolver = resolver
+    end
+
     def validate!(url)
       uri = parse!(url)
       assert_permitted_scheme!(uri, url)
       assert_not_internal_host!(uri, url)
+      assert_not_internal_resolved_addresses!(uri, url)
     end
 
     private
@@ -65,6 +75,18 @@ module Perchfall
       addr = parse_ip(host)
       if addr && blocked_ip?(addr)
         raise ArgumentError, internal_error(url)
+      end
+    end
+
+    def assert_not_internal_resolved_addresses!(uri, url)
+      host = uri.hostname.to_s
+      # Skip resolution for literal IPs — already checked in assert_not_internal_host!
+      return if parse_ip(host)
+
+      addresses = @resolver.getaddresses(host)
+      addresses.each do |address|
+        addr = parse_ip(address)
+        raise ArgumentError, internal_error(url) if addr && blocked_ip?(addr)
       end
     end
 

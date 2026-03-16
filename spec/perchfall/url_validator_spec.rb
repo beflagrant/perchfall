@@ -55,10 +55,49 @@ RSpec.describe Perchfall::UrlValidator do
       end
     end
 
+    context "hostname-based DNS resolution blocking (A2)" do
+      # A fake resolver stands in for Resolv so no real DNS calls are made.
+      def validator_resolving_to(*addresses)
+        fake = Class.new do
+          define_method(:getaddresses) { |_host| addresses }
+        end.new
+        described_class.new(resolver: fake)
+      end
+
+      it "rejects a hostname whose DNS resolves to a loopback address" do
+        expect { validator_resolving_to("127.0.0.1").validate!("https://internal.attacker.com") }
+          .to raise_error(ArgumentError, /internal/)
+      end
+
+      it "rejects a hostname resolving to the AWS metadata address" do
+        expect { validator_resolving_to("169.254.169.254").validate!("https://rebind.attacker.com") }
+          .to raise_error(ArgumentError, /internal/)
+      end
+
+      it "rejects a hostname resolving to an RFC-1918 address" do
+        expect { validator_resolving_to("10.0.0.1").validate!("https://internal.corp") }
+          .to raise_error(ArgumentError, /internal/)
+      end
+
+      it "rejects a hostname when any of its addresses is private (multi-A record)" do
+        expect { validator_resolving_to("1.2.3.4", "192.168.1.1").validate!("https://mixed.example.com") }
+          .to raise_error(ArgumentError, /internal/)
+      end
+
+      it "accepts a hostname resolving to a public address" do
+        expect { validator_resolving_to("93.184.216.34").validate!("https://example.com") }
+          .not_to raise_error
+      end
+
+      it "accepts a hostname when DNS returns no addresses (non-resolving domain is allowed through)" do
+        expect { validator_resolving_to().validate!("https://nonexistent.example.com") }
+          .not_to raise_error
+      end
+    end
+
     context "private/internal hostnames (A1 — literal address blocking)" do
       # These are blocked on the hostname string alone, without DNS resolution.
-      # A public DNS name that resolves to a private IP is NOT blocked here;
-      # that requires network-level egress filtering.
+      # DNS resolution of hostnames is covered by the A2 context above.
 
       it "rejects localhost" do
         expect { validator.validate!("http://localhost") }

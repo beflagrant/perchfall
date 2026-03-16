@@ -33,9 +33,9 @@ A security review identified two SSRF vectors:
 
 `IPAddr` range checks cover the full CIDR block, not just spot addresses.
 
-## Explicit Non-Decision
+## Explicit Non-Decision (superseded in part by ADR 0012)
 
-DNS-based SSRF (a public hostname that resolves to a private IP) is **not** mitigated here. Resolving DNS at validation time introduces a TOCTOU race: Playwright performs its own DNS lookup independently, and the resolution could differ. The correct defence for this attack vector is network-level egress filtering (security groups, firewall rules) on the host running Chromium. This limitation is documented in `UrlValidator`'s source.
+DNS-based SSRF (a public hostname that resolves to a private IP) was not mitigated here. ADR 0012 adds a DNS resolution check as defence-in-depth, narrowing the attack window. A TOCTOU race remains; network-level egress filtering is still the authoritative control.
 
 ## Consequences
 
