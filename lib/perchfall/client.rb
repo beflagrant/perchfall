@@ -20,6 +20,8 @@ module Perchfall
   # Client is intentionally thin. It owns the public method signature
   # and delegates all real work to the invoker.
   class Client
+    VALID_WAIT_UNTIL = %w[load domcontentloaded networkidle commit].freeze
+
     def initialize(
       invoker:   PlaywrightInvoker.new,
       validator: UrlValidator.new,
@@ -43,7 +45,6 @@ module Perchfall
     # @raise [Errors::ScriptError] if the Node script exited non-zero
     # @raise [Errors::ParseError] if the script output was not valid JSON
     # @raise [Errors::PageLoadError] if the page itself failed to load
-    VALID_WAIT_UNTIL = %w[load domcontentloaded networkidle commit].freeze
 
     def run(url:, ignore: [], wait_until: "load", timeout_ms: 30_000, scenario_name: nil, timestamp: Time.now.utc)
       @validator.validate!(url)
