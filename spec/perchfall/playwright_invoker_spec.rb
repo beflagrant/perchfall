@@ -115,6 +115,15 @@ RSpec.describe Perchfall::PlaywrightInvoker do
       end
     end
 
+    context "with unknown keyword arguments" do
+      subject(:invoker) { invoker_with(stdout: ok_json) }
+
+      it "raises ArgumentError" do
+        expect { invoker.run(url: "https://example.com", timoeut_ms: 5_000) }
+          .to raise_error(ArgumentError, /timoeut_ms/)
+      end
+    end
+
     context "when Node cannot be started" do
       it "raises InvocationError" do
         exploding_runner = Class.new do

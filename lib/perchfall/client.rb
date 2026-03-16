@@ -45,12 +45,21 @@ module Perchfall
     # @raise [Errors::PageLoadError] if the page itself failed to load
     VALID_WAIT_UNTIL = %w[load domcontentloaded networkidle commit].freeze
 
-    def run(url:, ignore: [], wait_until: "load", timeout_ms: 30_000, **opts)
+    def run(url:, ignore: [], wait_until: "load", timeout_ms: 30_000, scenario_name: nil, timestamp: Time.now.utc)
       @validator.validate!(url)
       validate_wait_until!(wait_until)
       validate_timeout_ms!(timeout_ms)
       merged_ignore = Perchfall::DEFAULT_IGNORE_RULES + ignore
-      @limiter.acquire { @invoker.run(url: url, ignore: merged_ignore, wait_until: wait_until, timeout_ms: timeout_ms, **opts) }
+      @limiter.acquire do
+        @invoker.run(
+          url:           url,
+          ignore:        merged_ignore,
+          wait_until:    wait_until,
+          timeout_ms:    timeout_ms,
+          scenario_name: scenario_name,
+          timestamp:     timestamp
+        )
+      end
     end
 
     private

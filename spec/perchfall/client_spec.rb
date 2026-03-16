@@ -74,6 +74,11 @@ RSpec.describe Perchfall::Client do
     expect(recording_invoker.last_opts).to include(timeout_ms: 9_000, scenario_name: "smoke")
   end
 
+  it "rejects unknown keyword arguments" do
+    expect { client.run(url: "https://example.com", timoeut_ms: 5_000) }
+      .to raise_error(ArgumentError, /timoeut_ms/)
+  end
+
   describe "wait_until validation" do
     it "accepts the four valid Playwright strategies" do
       %w[load domcontentloaded networkidle commit].each do |value|
