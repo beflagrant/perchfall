@@ -24,7 +24,7 @@ module Perchfall
       @script_path = script_path
     end
 
-    def run(url:, timeout_ms: 30_000, wait_until: "load", scenario_name: nil, timestamp: Time.now.utc, ignore: [])
+    def run(url:, timestamp:, timeout_ms: 30_000, wait_until: "load", scenario_name: nil, ignore: [])
       parser = build_parser(ignore)
       result = execute(build_command(url: url, timeout_ms: timeout_ms, wait_until: wait_until))
       report = parse(result, parser: parser, scenario_name: scenario_name, timestamp: timestamp)

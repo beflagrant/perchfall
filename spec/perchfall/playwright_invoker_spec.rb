@@ -17,16 +17,16 @@ RSpec.describe Perchfall::PlaywrightInvoker do
       subject(:invoker) { invoker_with(stdout: ok_json) }
 
       it "returns a Report" do
-        report = invoker.run(url: "https://example.com")
+        report = invoker.run(url: "https://example.com", timestamp: fixed_time)
         expect(report).to be_a(Perchfall::Report)
       end
 
       it "returns an ok report" do
-        expect(invoker.run(url: "https://example.com")).to be_ok
+        expect(invoker.run(url: "https://example.com", timestamp: fixed_time)).to be_ok
       end
 
       it "passes scenario_name through to the report" do
-        report = invoker.run(url: "https://example.com", scenario_name: "smoke")
+        report = invoker.run(url: "https://example.com", timestamp: fixed_time, scenario_name: "smoke")
         expect(report.scenario_name).to eq("smoke")
       end
 
@@ -34,13 +34,18 @@ RSpec.describe Perchfall::PlaywrightInvoker do
         report = invoker.run(url: "https://example.com", timestamp: fixed_time)
         expect(report.timestamp).to eq(fixed_time)
       end
+
+      it "requires timestamp to be provided" do
+        expect { invoker.run(url: "https://example.com") }
+          .to raise_error(ArgumentError, /timestamp/)
+      end
     end
 
     context "command construction" do
       it "passes --url and --timeout to node" do
         runner = FakeCommandRunner.new(stdout: ok_json)
         invoker = described_class.new(runner: runner)
-        invoker.run(url: "https://example.com", timeout_ms: 5_000)
+        invoker.run(url: "https://example.com", timeout_ms: 5_000, timestamp: fixed_time)
         expect(runner.last_command).to eq([
           "node",
           Perchfall::PlaywrightInvoker::DEFAULT_SCRIPT_PATH,
@@ -53,7 +58,7 @@ RSpec.describe Perchfall::PlaywrightInvoker do
       it "uses the default 30_000 ms timeout when none given" do
         runner = FakeCommandRunner.new(stdout: ok_json)
         invoker = described_class.new(runner: runner)
-        invoker.run(url: "https://example.com")
+        invoker.run(url: "https://example.com", timestamp: fixed_time)
         expect(runner.last_command).to include("30000")
       end
     end
@@ -62,18 +67,18 @@ RSpec.describe Perchfall::PlaywrightInvoker do
       subject(:invoker) { invoker_with(stdout: "", stderr: "ENOENT: node crashed", exit_status: 1) }
 
       it "raises ScriptError" do
-        expect { invoker.run(url: "https://example.com") }
+        expect { invoker.run(url: "https://example.com", timestamp: fixed_time) }
           .to raise_error(Perchfall::Errors::ScriptError)
       end
 
       it "includes exit_status on the exception" do
-        invoker.run(url: "https://example.com")
+        invoker.run(url: "https://example.com", timestamp: fixed_time)
       rescue Perchfall::Errors::ScriptError => e
         expect(e.exit_status).to eq(1)
       end
 
       it "does not expose stderr as a public attribute" do
-        invoker.run(url: "https://example.com")
+        invoker.run(url: "https://example.com", timestamp: fixed_time)
       rescue Perchfall::Errors::ScriptError => e
         expect(e).not_to respond_to(:stderr)
       end
@@ -83,12 +88,12 @@ RSpec.describe Perchfall::PlaywrightInvoker do
       subject(:invoker) { invoker_with(stdout: error_json) }
 
       it "raises PageLoadError" do
-        expect { invoker.run(url: "https://example.com") }
+        expect { invoker.run(url: "https://example.com", timestamp: fixed_time) }
           .to raise_error(Perchfall::Errors::PageLoadError)
       end
 
       it "carries the partial Report on the exception" do
-        invoker.run(url: "https://example.com")
+        invoker.run(url: "https://example.com", timestamp: fixed_time)
       rescue Perchfall::Errors::PageLoadError => e
         expect(e.report).to be_a(Perchfall::Report)
         expect(e.report.error).to eq("net::ERR_NAME_NOT_RESOLVED")
@@ -101,7 +106,7 @@ RSpec.describe Perchfall::PlaywrightInvoker do
         runner = FakeCommandRunner.new(stdout: ok_json(network_errors: [
           { url: "https://shop.app/pay", method: "GET", failure: "HTTP 403" }
         ]))
-        report = described_class.new(runner: runner).run(url: "https://example.com", ignore: [rule])
+        report = described_class.new(runner: runner).run(url: "https://example.com", timestamp: fixed_time, ignore: [rule])
         expect(report.network_errors).to be_empty
         expect(report.ignored_network_errors.first.failure).to eq("HTTP 403")
       end
@@ -109,7 +114,7 @@ RSpec.describe Perchfall::PlaywrightInvoker do
       it "moves matched console errors to ignored_console_errors" do
         rule   = Perchfall::IgnoreRule.new(pattern: "ReferenceError", type: "error", target: :console)
         runner = FakeCommandRunner.new(stdout: ok_json(console_errors: [console_error_entry]))
-        report = described_class.new(runner: runner).run(url: "https://example.com", ignore: [rule])
+        report = described_class.new(runner: runner).run(url: "https://example.com", timestamp: fixed_time, ignore: [rule])
         expect(report.console_errors).to be_empty
         expect(report.ignored_console_errors.first.text).to include("ReferenceError")
       end
@@ -119,7 +124,7 @@ RSpec.describe Perchfall::PlaywrightInvoker do
       subject(:invoker) { invoker_with(stdout: ok_json) }
 
       it "raises ArgumentError" do
-        expect { invoker.run(url: "https://example.com", timoeut_ms: 5_000) }
+        expect { invoker.run(url: "https://example.com", timestamp: fixed_time, timoeut_ms: 5_000) }
           .to raise_error(ArgumentError, /timoeut_ms/)
       end
     end
@@ -133,7 +138,7 @@ RSpec.describe Perchfall::PlaywrightInvoker do
         end.new
 
         invoker = described_class.new(runner: exploding_runner)
-        expect { invoker.run(url: "https://example.com") }
+        expect { invoker.run(url: "https://example.com", timestamp: fixed_time) }
           .to raise_error(Perchfall::Errors::InvocationError, /Could not start Node process/)
       end
     end

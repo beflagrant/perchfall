@@ -13,7 +13,7 @@ module Perchfall
         @filter = filter
       end
 
-      def parse(raw_json, scenario_name: nil, timestamp: Time.now.utc)
+      def parse(raw_json, timestamp:, scenario_name: nil)
         data = JSON.parse(raw_json, symbolize_names: true)
         build_report(data, scenario_name: scenario_name, timestamp: timestamp)
       rescue JSON::ParserError => e
