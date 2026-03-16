@@ -18,22 +18,27 @@ module Perchfall
 
     def initialize(
       runner: CommandRunner.new,
-      parser: Parsers::PlaywrightJsonParser.new,
       script_path: DEFAULT_SCRIPT_PATH
     )
       @runner      = runner
-      @parser      = parser
       @script_path = script_path
     end
 
-    def run(url:, timeout_ms: 30_000, wait_until: "load", scenario_name: nil, timestamp: Time.now.utc, **_rest)
+    def run(url:, timeout_ms: 30_000, wait_until: "load", scenario_name: nil, timestamp: Time.now.utc, ignore: [], **_rest)
+      parser = build_parser(ignore)
       result = execute(build_command(url: url, timeout_ms: timeout_ms, wait_until: wait_until))
-      report = parse(result, scenario_name: scenario_name, timestamp: timestamp)
+      report = parse(result, parser: parser, scenario_name: scenario_name, timestamp: timestamp)
       raise_if_page_load_error(report)
       report
     end
 
     private
+
+    def build_parser(ignore_rules)
+      Parsers::PlaywrightJsonParser.new(
+        filter: NetworkErrorFilter.new(rules: ignore_rules)
+      )
+    end
 
     def build_command(url:, timeout_ms:, wait_until:)
       ["node", @script_path, "--url", url, "--timeout", timeout_ms.to_s, "--wait-until", wait_until]
@@ -45,7 +50,7 @@ module Perchfall
       raise Errors::InvocationError, "Could not start Node process: #{e.message}"
     end
 
-    def parse(result, **opts)
+    def parse(result, parser:, **opts)
       unless result.success?
         raise Errors::ScriptError.new(
           "Playwright script exited with status #{result.exit_status}",
@@ -54,7 +59,7 @@ module Perchfall
         )
       end
 
-      @parser.parse(result.stdout, **opts)
+      parser.parse(result.stdout, **opts)
     end
 
     def raise_if_page_load_error(report)

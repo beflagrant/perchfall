@@ -90,6 +90,20 @@ RSpec.describe Perchfall::PlaywrightInvoker do
       end
     end
 
+    context "with ignore rules" do
+      it "moves matched errors to ignored_network_errors on the report" do
+        rule   = Perchfall::IgnoreRule.new(url_pattern: "shop.app", failure: "HTTP 403")
+        runner = FakeCommandRunner.new(stdout: ok_json(network_errors: [
+          { url: "https://shop.app/pay", method: "GET", failure: "HTTP 403" }
+        ]))
+        invoker = described_class.new(runner: runner)
+        report  = invoker.run(url: "https://example.com", ignore: [rule])
+        expect(report.network_errors).to be_empty
+        expect(report.ignored_network_errors.length).to eq(1)
+        expect(report.ignored_network_errors.first.failure).to eq("HTTP 403")
+      end
+    end
+
     context "when Node cannot be started" do
       it "raises InvocationError" do
         exploding_runner = Class.new do

@@ -5,6 +5,9 @@ require "spec_helper"
 RSpec.describe Perchfall::Parsers::PlaywrightJsonParser do
   include PlaywrightJsonFixture
 
+  let(:aborted_rule) { Perchfall::IgnoreRule.new(url_pattern: //, failure: "net::ERR_ABORTED") }
+  let(:aborted_filter) { Perchfall::NetworkErrorFilter.new(rules: [aborted_rule]) }
+
   subject(:parser) { described_class.new }
 
   let(:fixed_time) { Time.utc(2026, 3, 15, 21, 30, 0) }
@@ -57,31 +60,37 @@ RSpec.describe Perchfall::Parsers::PlaywrightJsonParser do
       end
     end
 
-    context "with ERR_ABORTED network errors (browser-aborted requests)" do
+    context "with an injected filter that suppresses ERR_ABORTED" do
+      subject(:parser) { described_class.new(filter: aborted_filter) }
+
       it "excludes ERR_ABORTED entries from network_errors" do
-        aborted_entry = network_error_entry(failure: "net::ERR_ABORTED")
-        json = ok_json(network_errors: [aborted_entry])
+        json   = ok_json(network_errors: [network_error_entry(failure: "net::ERR_ABORTED")])
         report = parser.parse(json)
         expect(report.network_errors).to be_empty
       end
 
-      it "keeps real failures alongside aborted ones" do
-        aborted  = network_error_entry(failure: "net::ERR_ABORTED")
-        real     = network_error_entry(url: "https://example.com/api.js", failure: "net::ERR_CONNECTION_REFUSED")
-        json     = ok_json(network_errors: [aborted, real])
-        report   = parser.parse(json)
+      it "moves ERR_ABORTED entries to ignored_network_errors" do
+        json   = ok_json(network_errors: [network_error_entry(failure: "net::ERR_ABORTED")])
+        report = parser.parse(json)
+        expect(report.ignored_network_errors.length).to eq(1)
+        expect(report.ignored_network_errors.first.failure).to eq("net::ERR_ABORTED")
+      end
+
+      it "keeps real failures in network_errors" do
+        aborted = network_error_entry(failure: "net::ERR_ABORTED")
+        real    = network_error_entry(url: "https://example.com/api.js", failure: "net::ERR_CONNECTION_REFUSED")
+        report  = parser.parse(ok_json(network_errors: [aborted, real]))
+        expect(report.network_errors.map(&:failure)).to eq(["net::ERR_CONNECTION_REFUSED"])
+        expect(report.ignored_network_errors.map(&:failure)).to eq(["net::ERR_ABORTED"])
+      end
+    end
+
+    context "with no filter (default)" do
+      it "puts all network_errors in network_errors and none in ignored" do
+        json   = ok_json(network_errors: [network_error_entry(failure: "net::ERR_ABORTED")])
+        report = parser.parse(json)
         expect(report.network_errors.length).to eq(1)
-        expect(report.network_errors.first.failure).to eq("net::ERR_CONNECTION_REFUSED")
-      end
-
-      it "returns an empty array when all errors are ERR_ABORTED" do
-        entries = [
-          network_error_entry(url: "https://analytics.google.com/g/collect", failure: "net::ERR_ABORTED"),
-          network_error_entry(url: "https://www.google-analytics.com/g/collect", failure: "net::ERR_ABORTED"),
-        ]
-        json   = ok_json(network_errors: entries)
-        report = parser.parse(json)
-        expect(report.network_errors).to be_empty
+        expect(report.ignored_network_errors).to be_empty
       end
     end
 

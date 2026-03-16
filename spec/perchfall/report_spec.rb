@@ -15,6 +15,12 @@ RSpec.describe Perchfall::Report do
       report = build_report(network_errors: [ne])
       expect(report.network_errors).to be_frozen
     end
+
+    it "freezes ignored_network_errors array" do
+      ne = Perchfall::NetworkError.new(url: "https://cdn.example.com/x.js", method: "GET", failure: "timeout")
+      report = build_report(ignored_network_errors: [ne])
+      expect(report.ignored_network_errors).to be_frozen
+    end
   end
 
   describe "#ok?" do
@@ -32,8 +38,16 @@ RSpec.describe Perchfall::Report do
       h = build_report.to_h
       expect(h.keys).to contain_exactly(
         :status, :url, :scenario_name, :timestamp, :ok,
-        :http_status, :duration_ms, :network_errors, :console_errors, :error
+        :http_status, :duration_ms, :network_errors, :ignored_network_errors, :console_errors, :error
       )
+    end
+
+    it "serializes ignored_network_errors as plain hashes" do
+      ne = Perchfall::NetworkError.new(url: "https://shop.app/pay", method: "GET", failure: "HTTP 403")
+      report = build_report(ignored_network_errors: [ne])
+      expect(report.to_h[:ignored_network_errors]).to eq([
+        { url: "https://shop.app/pay", method: "GET", failure: "HTTP 403" }
+      ])
     end
 
     it "serializes network_errors as plain hashes" do

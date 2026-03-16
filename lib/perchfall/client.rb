@@ -43,9 +43,10 @@ module Perchfall
     # @raise [Errors::ScriptError] if the Node script exited non-zero
     # @raise [Errors::ParseError] if the script output was not valid JSON
     # @raise [Errors::PageLoadError] if the page itself failed to load
-    def run(url:, **opts)
+    def run(url:, ignore: [], **opts)
       @validator.validate!(url)
-      @limiter.acquire { @invoker.run(url: url, **opts) }
+      merged_ignore = Perchfall::DEFAULT_IGNORE_RULES + ignore
+      @limiter.acquire { @invoker.run(url: url, ignore: merged_ignore, **opts) }
     end
   end
 end

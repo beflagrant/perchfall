@@ -71,7 +71,22 @@ RSpec.describe Perchfall::Client do
 
   it "forwards keyword options to the invoker" do
     client.run(url: "https://example.com", timeout_ms: 9_000, scenario_name: "smoke")
-    expect(recording_invoker.last_opts).to eq({ timeout_ms: 9_000, scenario_name: "smoke" })
+    expect(recording_invoker.last_opts).to include(timeout_ms: 9_000, scenario_name: "smoke")
+  end
+
+  describe "ignore rules" do
+    it "merges caller rules with DEFAULT_IGNORE_RULES and forwards them" do
+      extra_rule = Perchfall::IgnoreRule.new(url_pattern: "shop.app", failure: "HTTP 403")
+      client.run(url: "https://example.com", ignore: [extra_rule])
+      forwarded = recording_invoker.last_opts[:ignore]
+      expect(forwarded).to include(*Perchfall::DEFAULT_IGNORE_RULES)
+      expect(forwarded).to include(extra_rule)
+    end
+
+    it "forwards only DEFAULT_IGNORE_RULES when no caller rules given" do
+      client.run(url: "https://example.com")
+      expect(recording_invoker.last_opts[:ignore]).to eq(Perchfall::DEFAULT_IGNORE_RULES)
+    end
   end
 
   it "returns the report from the invoker" do

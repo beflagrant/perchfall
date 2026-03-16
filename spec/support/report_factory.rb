@@ -9,8 +9,9 @@ module ReportFactory
       url:            "https://example.com",
       duration_ms:    100,
       http_status:    200,
-      network_errors: [],
-      console_errors: [],
+      network_errors:         [],
+      ignored_network_errors: [],
+      console_errors:         [],
       error:          nil
     }
     Perchfall::Report.new(**defaults.merge(overrides))

@@ -5,6 +5,8 @@ require_relative "perchfall/errors"
 require_relative "perchfall/network_error"
 require_relative "perchfall/console_error"
 require_relative "perchfall/report"
+require_relative "perchfall/ignore_rule"
+require_relative "perchfall/network_error_filter"
 require_relative "perchfall/command_runner"
 require_relative "perchfall/concurrency_limiter"
 require_relative "perchfall/url_validator"
@@ -24,6 +26,14 @@ require_relative "perchfall/client"
 #   client = Perchfall::Client.new(invoker: MyInvoker.new)
 #   report = client.run(url: "https://example.com", scenario_name: "homepage_smoke")
 module Perchfall
+  # Network errors suppressed by default on every run.
+  # ERR_ABORTED is a browser-side abort (analytics beacons, cancelled prefetches)
+  # and is never a signal of real page failure.
+  # Callers extend this list by passing ignore: to Perchfall.run or Client#run.
+  DEFAULT_IGNORE_RULES = [
+    IgnoreRule.new(url_pattern: //, failure: "net::ERR_ABORTED"),
+  ].freeze
+
   # Process-wide concurrency limiter. Caps simultaneous Chromium instances
   # across all threads. Override by passing limiter: to Client.new.
   #
