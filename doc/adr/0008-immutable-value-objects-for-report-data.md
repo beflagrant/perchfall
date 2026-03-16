@@ -13,7 +13,7 @@ Additionally, `CommandRunner` produces a `Result` that crosses the boundary betw
 
 All data-carrier objects are immutable.
 
-**`NetworkError` and `ConsoleError`** use `Data.define` (Ruby 3.2+). `Data` instances are frozen by definition and have value equality built in.
+**`NetworkError`, `ConsoleError`, and `IgnoreRule`** use `Data.define` (Ruby 3.2+). `Data` instances are frozen by definition and have value equality built in. `IgnoreRule` value equality matters in practice — a caller that accidentally supplies a duplicate rule will produce a deduplicate-able list.
 
 **`Report`** uses a plain class with explicit `freeze` in `initialize`. `Data.define` was considered but rejected for `Report` because `Report` has a non-trivial number of attributes, optional keyword arguments with defaults, and computed methods (`ok?`, `to_h`, `to_json`, `==`). A plain class makes all of this more readable and explicit than a `Data.define` block.
 
@@ -23,7 +23,7 @@ All data-carrier objects are immutable.
 
 ## Consequences
 
-- Frozen objects cannot be mutated after construction. Callers that attempt to modify a report (e.g. `report.network_errors << new_error`) receive a `FrozenError`. This is intentional.
+- Frozen objects cannot be mutated after construction. Callers that attempt to modify a report (e.g. `report.network_errors << new_error`) receive a `FrozenError`. This is intentional. The same applies to the `ignored_network_errors` and `ignored_console_errors` arrays added in ADR 0010/0011.
 - `Data.define` is Ruby 3.2+. The gemspec specifies `required_ruby_version >= 3.2.0`.
 - `NetworkError` defines a `method` attribute, which shadows `Object#method`. This is a known issue (R4 from the code review) that has not yet been fixed. The workaround is to avoid calling `.method(:something)` on a `NetworkError` instance. Renaming to `http_method` is the correct fix.
 - `Report#==` uses `timestamp.iso8601` (one-second resolution) for comparison. Two reports from the same run created within the same second would be considered equal even if other attributes differed — though in practice this cannot happen since a `Report` is constructed once. This is a known minor imprecision (R3 from the code review).

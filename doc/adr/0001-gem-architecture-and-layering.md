@@ -22,6 +22,8 @@ Client
   └─ PlaywrightInvoker
        ├─ CommandRunner          (process execution)
        └─ PlaywrightJsonParser   (data transformation)
+            ├─ ErrorFilter       (ignore rule routing)
+            │    └─ IgnoreRule   (value object — pattern + type + target)
             └─ Report / NetworkError / ConsoleError  (value objects)
 ```
 
@@ -33,13 +35,15 @@ Client
 
 **`PlaywrightJsonParser`** converts a raw JSON string into domain objects. It is a pure function — no I/O, no side effects.
 
-**Value objects** (`Report`, `NetworkError`, `ConsoleError`) are immutable. `NetworkError` and `ConsoleError` use `Data.define`. `Report` uses a plain class with explicit `freeze` for clarity and Ruby 3.1 compatibility.
+**`ErrorFilter`** sits inside `PlaywrightJsonParser` and applies a caller-supplied list of `IgnoreRule` objects to both `NetworkError` and `ConsoleError` arrays before the `Report` is constructed. It routes rules to the correct error type via each rule's `target:` field (`:network`, `:console`, or `:all`). See ADR 0010 and ADR 0011.
+
+**Value objects** (`Report`, `NetworkError`, `ConsoleError`, `IgnoreRule`) are immutable. `NetworkError`, `ConsoleError`, and `IgnoreRule` use `Data.define`. `Report` uses a plain class with explicit `freeze` for clarity.
 
 The Node script (`playwright/check.js`) is treated as a subprocess with a defined JSON contract, not as a library. The Ruby side never loads Node modules directly.
 
 ## Consequences
 
 - Every class can be unit-tested in isolation by injecting fakes at construction time. No test needs a real browser or real process.
-- Adding a new invoker (e.g. a remote Playwright service) requires implementing one method: `#run(url:, **opts) → Report`.
+- Adding a new invoker (e.g. a remote Playwright service) requires implementing one method: `#run(url:, ignore:, **opts) → Report`.
 - The Node script can be replaced or rewritten without touching Ruby code, as long as the JSON schema is preserved.
 - The layering adds indirection. For a project of this size that is a minor cost, justified by the testability and replaceability gains.
