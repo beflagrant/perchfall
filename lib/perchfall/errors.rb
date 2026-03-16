@@ -10,14 +10,22 @@ module Perchfall
     class InvocationError < Error; end
 
     # The Node process ran but exited non-zero, or produced unparseable output.
+    # exit_status is exposed for callers that need to distinguish failure modes.
+    # stderr is intentionally not public — it may contain server filesystem paths,
+    # Node version strings, and stack traces that should not be surfaced to end users.
+    # Log stderr at the framework/application level using a rescue block if needed.
     class ScriptError < Error
-      attr_reader :exit_status, :stderr
+      attr_reader :exit_status
 
       def initialize(message, exit_status: nil, stderr: nil)
         super(message)
         @exit_status = exit_status
         @stderr      = stderr
       end
+
+      private
+
+      attr_reader :stderr
     end
 
     # The JSON the Node script produced was structurally invalid.

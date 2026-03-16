@@ -70,7 +70,12 @@ RSpec.describe Perchfall::PlaywrightInvoker do
         invoker.run(url: "https://example.com")
       rescue Perchfall::Errors::ScriptError => e
         expect(e.exit_status).to eq(1)
-        expect(e.stderr).to eq("ENOENT: node crashed")
+      end
+
+      it "does not expose stderr as a public attribute" do
+        invoker.run(url: "https://example.com")
+      rescue Perchfall::Errors::ScriptError => e
+        expect(e).not_to respond_to(:stderr)
       end
     end
 
