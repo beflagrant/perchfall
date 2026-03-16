@@ -11,13 +11,13 @@ RSpec.describe Perchfall::Report do
     end
 
     it "freezes network_errors array" do
-      ne = Perchfall::NetworkError.new(url: "https://cdn.example.com/x.js", method: "GET", failure: "timeout")
+      ne = Perchfall::NetworkError.new(url: "https://cdn.example.com/x.js", http_method: "GET", failure: "timeout")
       report = build_report(network_errors: [ne])
       expect(report.network_errors).to be_frozen
     end
 
     it "freezes ignored_network_errors array" do
-      ne = Perchfall::NetworkError.new(url: "https://cdn.example.com/x.js", method: "GET", failure: "timeout")
+      ne = Perchfall::NetworkError.new(url: "https://cdn.example.com/x.js", http_method: "GET", failure: "timeout")
       report = build_report(ignored_network_errors: [ne])
       expect(report.ignored_network_errors).to be_frozen
     end
@@ -52,7 +52,7 @@ RSpec.describe Perchfall::Report do
     end
 
     it "serializes ignored_network_errors as plain hashes" do
-      ne = Perchfall::NetworkError.new(url: "https://shop.app/pay", method: "GET", failure: "HTTP 403")
+      ne = Perchfall::NetworkError.new(url: "https://shop.app/pay", http_method: "GET", failure: "HTTP 403")
       report = build_report(ignored_network_errors: [ne])
       expect(report.to_h[:ignored_network_errors]).to eq([
         { url: "https://shop.app/pay", method: "GET", failure: "HTTP 403" }
@@ -68,7 +68,7 @@ RSpec.describe Perchfall::Report do
     end
 
     it "serializes network_errors as plain hashes" do
-      ne = Perchfall::NetworkError.new(url: "https://cdn.example.com/x.js", method: "GET", failure: "timeout")
+      ne = Perchfall::NetworkError.new(url: "https://cdn.example.com/x.js", http_method: "GET", failure: "timeout")
       report = build_report(network_errors: [ne])
       expect(report.to_h[:network_errors]).to eq([
         { url: "https://cdn.example.com/x.js", method: "GET", failure: "timeout" }

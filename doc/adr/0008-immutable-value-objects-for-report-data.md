@@ -25,5 +25,5 @@ All data-carrier objects are immutable.
 
 - Frozen objects cannot be mutated after construction. Callers that attempt to modify a report (e.g. `report.network_errors << new_error`) receive a `FrozenError`. This is intentional. The same applies to the `ignored_network_errors` and `ignored_console_errors` arrays added in ADR 0010/0011.
 - `Data.define` is Ruby 3.2+. The gemspec specifies `required_ruby_version >= 3.2.0`.
-- `NetworkError` defines a `method` attribute, which shadows `Object#method`. This is a known issue (R4 from the code review) that has not yet been fixed. The workaround is to avoid calling `.method(:something)` on a `NetworkError` instance. Renaming to `http_method` is the correct fix.
+- `NetworkError` uses `http_method` (not `method`) as its Ruby attribute name to avoid shadowing `Object#method`. The `to_h` / `to_json` serialization preserves the external key name `method` for compatibility with the Node script's JSON schema.
 - `Report#==` uses `timestamp.iso8601` (one-second resolution) for comparison. Two reports from the same run created within the same second would be considered equal even if other attributes differed — though in practice this cannot happen since a `Report` is constructed once. This is a known minor imprecision (R3 from the code review).

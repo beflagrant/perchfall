@@ -3,9 +3,9 @@
 module Perchfall
   # Immutable value object representing a single failed network request
   # captured during a Playwright browser run.
-  NetworkError = Data.define(:url, :method, :failure) do
+  NetworkError = Data.define(:url, :http_method, :failure) do
     def to_h
-      { url: url, method: method, failure: failure }
+      { url: url, method: http_method, failure: failure }
     end
 
     def to_json(...)

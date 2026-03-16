@@ -51,10 +51,10 @@ RSpec.describe Perchfall::Parsers::PlaywrightJsonParser do
         expect(report.network_errors.first).to be_a(Perchfall::NetworkError)
       end
 
-      it "maps url, method, failure" do
+      it "maps url, http_method, failure" do
         ne = parser.parse(json).network_errors.first
         expect(ne.url).to eq("https://example.com/app.js")
-        expect(ne.method).to eq("GET")
+        expect(ne.http_method).to eq("GET")
         expect(ne.failure).to eq("net::ERR_NAME_NOT_RESOLVED")
       end
     end

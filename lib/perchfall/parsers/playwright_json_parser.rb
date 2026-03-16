@@ -46,9 +46,9 @@ module Perchfall
       def parse_network_errors(raw)
         raw.map do |item|
           NetworkError.new(
-            url:     item.fetch(:url),
-            method:  item.fetch(:method),
-            failure: item.fetch(:failure)
+            url:         item.fetch(:url),
+            http_method: item.fetch(:method),
+            failure:     item.fetch(:failure)
           )
         end
       rescue KeyError => e

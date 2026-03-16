@@ -4,7 +4,7 @@ require "spec_helper"
 
 RSpec.describe Perchfall::ErrorFilter do
   def make_network(url: "https://example.com/app.js", failure: "HTTP 403")
-    Perchfall::NetworkError.new(url: url, method: "GET", failure: failure)
+    Perchfall::NetworkError.new(url: url, http_method: "GET", failure: failure)
   end
 
   def make_console(text: "Uncaught ReferenceError: foo", type: "error")
