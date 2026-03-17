@@ -21,15 +21,12 @@ Gem::Specification.new do |spec|
   spec.files = Dir[
     'lib/**/*',
     'playwright/**/*',
-    'bin/*',
     'README.md',
     'CHANGELOG.md',
     'LICENSE.txt',
     'perchfall.gemspec'
   ].reject { |f| File.directory?(f) }
 
-  spec.bindir        = 'bin'
-  spec.executables   = ['console']
   spec.require_paths = ['lib']
 
   # json is in stdlib but declared explicitly so bundler resolves it correctly
