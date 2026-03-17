@@ -5,8 +5,8 @@ require_relative 'lib/perchfall/version'
 Gem::Specification.new do |spec|
   spec.name          = 'perchfall'
   spec.version       = Perchfall::VERSION
-  spec.authors       = ['Your Name']
-  spec.email         = ['you@example.com']
+  spec.authors       = ['Jim Remsik']
+  spec.email         = ['jim@beflagrant.com']
 
   spec.summary       = 'Synthetic browser monitoring via Playwright'
   spec.description   = <<~DESC
