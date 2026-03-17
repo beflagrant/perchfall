@@ -13,22 +13,22 @@ module Perchfall
         @filter = filter
       end
 
-      def parse(raw_json, timestamp:, scenario_name: nil)
+      def parse(raw_json, timestamp:, scenario_name: nil, original_url: nil)
         data = JSON.parse(raw_json, symbolize_names: true)
-        build_report(data, scenario_name: scenario_name, timestamp: timestamp)
+        build_report(data, scenario_name: scenario_name, timestamp: timestamp, original_url: original_url)
       rescue JSON::ParserError => e
         raise Errors::ParseError, "Invalid JSON from Playwright script: #{e.message}"
       end
 
       private
 
-      def build_report(data, scenario_name:, timestamp:)
+      def build_report(data, scenario_name:, timestamp:, original_url: nil)
         net_filtered     = @filter.filter_network(parse_network_errors(data.fetch(:network_errors, [])))
         console_filtered = @filter.filter_console(parse_console_errors(data.fetch(:console_errors, [])))
 
         Report.new(
           status:                 data.fetch(:status),
-          url:                    data.fetch(:url),
+          url:                    original_url || data.fetch(:url),
           duration_ms:            data.fetch(:duration_ms),
           http_status:            data[:http_status],
           network_errors:         net_filtered[:kept],

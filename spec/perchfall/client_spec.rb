@@ -10,11 +10,11 @@ RSpec.describe Perchfall::Client do
     Class.new do
       attr_reader :last_url, :last_opts
 
-      def run(url:, **opts)
+      def run(url:, original_url: nil, **opts)
         @last_url  = url
-        @last_opts = opts
+        @last_opts = opts.merge(original_url: original_url)
         Perchfall::Report.new(
-          status: "ok", url: url, duration_ms: 1,
+          status: "ok", url: original_url || url, duration_ms: 1,
           http_status: 200, network_errors: [], console_errors: [], error: nil
         )
       end
@@ -108,6 +108,16 @@ RSpec.describe Perchfall::Client do
     it "passes the original URL to the invoker when bust_cache: false" do
       client.run(url: "https://example.com", bust_cache: false)
       expect(recording_invoker.last_url).to eq("https://example.com")
+    end
+
+    it "passes the original URL as original_url: so the report reflects the caller's URL" do
+      client.run(url: "https://example.com", bust_cache: true)
+      expect(recording_invoker.last_opts[:original_url]).to eq("https://example.com")
+    end
+
+    it "report.url is the original URL, not the cache-busted URL" do
+      report = client.run(url: "https://example.com", bust_cache: true)
+      expect(report.url).to eq("https://example.com")
     end
   end
 

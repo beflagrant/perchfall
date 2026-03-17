@@ -24,10 +24,10 @@ module Perchfall
       @script_path = script_path
     end
 
-    def run(url:, timestamp:, timeout_ms: 30_000, wait_until: "load", scenario_name: nil, ignore: [])
+    def run(url:, timestamp:, timeout_ms: 30_000, wait_until: "load", scenario_name: nil, ignore: [], original_url: nil)
       parser = build_parser(ignore)
       result = execute(build_command(url: url, timeout_ms: timeout_ms, wait_until: wait_until))
-      report = parse(result, parser: parser, scenario_name: scenario_name, timestamp: timestamp)
+      report = parse(result, parser: parser, scenario_name: scenario_name, timestamp: timestamp, original_url: original_url || url)
       raise_if_page_load_error(report)
       report
     end

@@ -30,6 +30,20 @@ RSpec.describe Perchfall::PlaywrightInvoker do
         expect(report.scenario_name).to eq("smoke")
       end
 
+      it "uses original_url for report.url when provided" do
+        report = invoker.run(
+          url:          "https://example.com?_perchfall=123",
+          original_url: "https://example.com",
+          timestamp:    fixed_time
+        )
+        expect(report.url).to eq("https://example.com")
+      end
+
+      it "falls back to url for report.url when original_url is not provided" do
+        report = invoker.run(url: "https://example.com", timestamp: fixed_time)
+        expect(report.url).to eq("https://example.com")
+      end
+
       it "passes timestamp through to the report" do
         report = invoker.run(url: "https://example.com", timestamp: fixed_time)
         expect(report.timestamp).to eq(fixed_time)

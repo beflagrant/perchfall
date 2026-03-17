@@ -57,6 +57,7 @@ module Perchfall
       @limiter.acquire do
         @invoker.run(
           url:           effective_url,
+          original_url:  url,
           ignore:        merged_ignore,
           wait_until:    wait_until,
           timeout_ms:    timeout_ms,
