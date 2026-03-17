@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `Perchfall.run(url:)` — primary public API; returns an immutable `Report` value object
-- `bust_cache:` option (default `true`) appends a `_perchfall=<timestamp>` query parameter to prevent CDN and proxy caching from masking real page state
+- `bust_cache:` option (default `true`) appends a `_perchfall=<timestamp>` query parameter to prevent CDN and proxy caching from masking real page state; `report.url` always reflects the original caller URL, not the cache-busted one
 - `scenario_name:` option included in the report for labelling checks
 - `wait_until:` option (`load`, `domcontentloaded`, `networkidle`, `commit`) controls when Playwright considers navigation complete
 - `timeout_ms:` option (default 30 000, max 60 000) for Playwright navigation timeout
@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Default ignore rule suppresses `net::ERR_ABORTED` (analytics beacons, cancelled prefetches)
 - Typed exception hierarchy: `PageLoadError` (with partial report), `ConcurrencyLimitError`, `InvocationError`, `ScriptError`, `ParseError`
 - Process-wide concurrency limiter (default 5 simultaneous Chromium instances) using Mutex + ConditionVariable — no spinning, slot always released
-- SSRF mitigations: scheme allowlist (`http`/`https` only), literal IP blocklist (loopback, link-local, RFC-1918), DNS resolution check
+- SSRF mitigations: scheme allowlist (`http`/`https` only), literal IP blocklist (loopback, link-local, RFC-1918), DNS resolution check; URL validation always runs against the effective URL sent to Playwright (post cache-bust)
 - Full dependency injection throughout — test suite runs in ~0.4 s with no browser, Node, or network required
 - GitHub Actions CI workflow (unit suite) and manual Playwright smoke check workflow
 
