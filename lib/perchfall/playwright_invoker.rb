@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "uri"
+
 module Perchfall
   # Knows how to invoke the Playwright Node script and return a Report.
   #
@@ -24,9 +26,9 @@ module Perchfall
       @script_path = script_path
     end
 
-    def run(url:, timestamp:, timeout_ms: 30_000, wait_until: "load", scenario_name: nil, ignore: [])
+    def run(url:, timestamp:, timeout_ms: 30_000, wait_until: "load", scenario_name: nil, ignore: [], bust_cache: true)
       parser = build_parser(ignore)
-      result = execute(build_command(url: url, timeout_ms: timeout_ms, wait_until: wait_until))
+      result = execute(build_command(url: url, timeout_ms: timeout_ms, wait_until: wait_until, bust_cache: bust_cache))
       report = parse(result, parser: parser, scenario_name: scenario_name, timestamp: timestamp)
       raise_if_page_load_error(report)
       report
@@ -38,8 +40,15 @@ module Perchfall
       Parsers::PlaywrightJsonParser.new(filter: ErrorFilter.new(rules: ignore_rules))
     end
 
-    def build_command(url:, timeout_ms:, wait_until:)
-      ["node", @script_path, "--url", url, "--timeout", timeout_ms.to_s, "--wait-until", wait_until]
+    def build_command(url:, timeout_ms:, wait_until:, bust_cache:)
+      effective_url = bust_cache ? append_cache_buster(url) : url
+      ["node", @script_path, "--url", effective_url, "--timeout", timeout_ms.to_s, "--wait-until", wait_until]
+    end
+
+    def append_cache_buster(url)
+      uri = URI.parse(url)
+      separator = uri.query ? "&" : "?"
+      "#{url}#{separator}_perchfall=#{Time.now.utc.to_i}"
     end
 
     def execute(command)

@@ -45,7 +45,7 @@ RSpec.describe Perchfall::PlaywrightInvoker do
       it "passes --url and --timeout to node" do
         runner = FakeCommandRunner.new(stdout: ok_json)
         invoker = described_class.new(runner: runner)
-        invoker.run(url: "https://example.com", timeout_ms: 5_000, timestamp: fixed_time)
+        invoker.run(url: "https://example.com", timeout_ms: 5_000, timestamp: fixed_time, bust_cache: false)
         expect(runner.last_command).to eq([
           "node",
           Perchfall::PlaywrightInvoker::DEFAULT_SCRIPT_PATH,
@@ -58,8 +58,38 @@ RSpec.describe Perchfall::PlaywrightInvoker do
       it "uses the default 30_000 ms timeout when none given" do
         runner = FakeCommandRunner.new(stdout: ok_json)
         invoker = described_class.new(runner: runner)
-        invoker.run(url: "https://example.com", timestamp: fixed_time)
+        invoker.run(url: "https://example.com", timestamp: fixed_time, bust_cache: false)
         expect(runner.last_command).to include("30000")
+      end
+
+      context "cache busting" do
+        it "appends a _perchfall query parameter when bust_cache: true" do
+          runner = FakeCommandRunner.new(stdout: ok_json)
+          invoker = described_class.new(runner: runner)
+          invoker.run(url: "https://example.com", timestamp: fixed_time, bust_cache: true)
+          expect(runner.last_command[3]).to match(%r{\Ahttps://example\.com\?_perchfall=\d+\z})
+        end
+
+        it "appends with & when the URL already has a query string" do
+          runner = FakeCommandRunner.new(stdout: ok_json)
+          invoker = described_class.new(runner: runner)
+          invoker.run(url: "https://example.com?foo=bar", timestamp: fixed_time, bust_cache: true)
+          expect(runner.last_command[3]).to match(%r{\Ahttps://example\.com\?foo=bar&_perchfall=\d+\z})
+        end
+
+        it "passes the URL unmodified when bust_cache: false" do
+          runner = FakeCommandRunner.new(stdout: ok_json)
+          invoker = described_class.new(runner: runner)
+          invoker.run(url: "https://example.com", timestamp: fixed_time, bust_cache: false)
+          expect(runner.last_command[3]).to eq("https://example.com")
+        end
+
+        it "defaults to bust_cache: true" do
+          runner = FakeCommandRunner.new(stdout: ok_json)
+          invoker = described_class.new(runner: runner)
+          invoker.run(url: "https://example.com", timestamp: fixed_time)
+          expect(runner.last_command[3]).to match(/_perchfall=/)
+        end
       end
     end
 

@@ -46,7 +46,7 @@ module Perchfall
     # @raise [Errors::ParseError] if the script output was not valid JSON
     # @raise [Errors::PageLoadError] if the page itself failed to load
 
-    def run(url:, ignore: [], wait_until: "load", timeout_ms: 30_000, scenario_name: nil, timestamp: Time.now.utc)
+    def run(url:, ignore: [], wait_until: "load", timeout_ms: 30_000, scenario_name: nil, timestamp: Time.now.utc, bust_cache: true)
       @validator.validate!(url)
       validate_wait_until!(wait_until)
       validate_timeout_ms!(timeout_ms)
@@ -58,7 +58,8 @@ module Perchfall
           wait_until:    wait_until,
           timeout_ms:    timeout_ms,
           scenario_name: scenario_name,
-          timestamp:     timestamp
+          timestamp:     timestamp,
+          bust_cache:    bust_cache
         )
       end
     end

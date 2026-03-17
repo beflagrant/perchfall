@@ -74,6 +74,18 @@ RSpec.describe Perchfall::Client do
     expect(recording_invoker.last_opts).to include(timeout_ms: 9_000, scenario_name: "smoke")
   end
 
+  describe "bust_cache" do
+    it "defaults to true" do
+      client.run(url: "https://example.com")
+      expect(recording_invoker.last_opts[:bust_cache]).to be(true)
+    end
+
+    it "forwards bust_cache: false to the invoker" do
+      client.run(url: "https://example.com", bust_cache: false)
+      expect(recording_invoker.last_opts[:bust_cache]).to be(false)
+    end
+  end
+
   it "rejects unknown keyword arguments" do
     expect { client.run(url: "https://example.com", timoeut_ms: 5_000) }
       .to raise_error(ArgumentError, /timoeut_ms/)
