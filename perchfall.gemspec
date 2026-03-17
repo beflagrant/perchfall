@@ -23,6 +23,7 @@ Gem::Specification.new do |spec|
     'playwright/**/*',
     'bin/*',
     'README.md',
+    'CHANGELOG.md',
     'LICENSE.txt',
     'perchfall.gemspec'
   ].reject { |f| File.directory?(f) }
