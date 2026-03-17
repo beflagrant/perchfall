@@ -13,8 +13,14 @@ Gem::Specification.new do |spec|
     Run headless browser checks against a URL using Playwright and receive a
     structured, immutable Ruby report object — framework-agnostic, no persistence.
   DESC
-  spec.homepage      = 'https://github.com/yourorg/perchfall'
+  spec.homepage      = 'https://github.com/beflagrant/perchfall'
   spec.license       = 'MIT'
+  spec.metadata      = {
+    'source_code_uri' => 'https://github.com/beflagrant/perchfall',
+    'changelog_uri' => 'https://github.com/beflagrant/perchfall/blob/main/CHANGELOG.md',
+    'bug_tracker_uri' => 'https://github.com/beflagrant/perchfall/issues',
+    'rubygems_mfa_required' => 'true'
+  }
 
   spec.required_ruby_version = '>= 3.2.0'
 
