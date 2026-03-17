@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "uri"
+
 module Perchfall
   # The primary entry point for library consumers.
   #
@@ -47,19 +49,19 @@ module Perchfall
     # @raise [Errors::PageLoadError] if the page itself failed to load
 
     def run(url:, ignore: [], wait_until: "load", timeout_ms: 30_000, scenario_name: nil, timestamp: Time.now.utc, bust_cache: true)
-      @validator.validate!(url)
+      effective_url = bust_cache ? append_cache_buster(url) : url
+      @validator.validate!(effective_url)
       validate_wait_until!(wait_until)
       validate_timeout_ms!(timeout_ms)
       merged_ignore = Perchfall::DEFAULT_IGNORE_RULES + ignore
       @limiter.acquire do
         @invoker.run(
-          url:           url,
+          url:           effective_url,
           ignore:        merged_ignore,
           wait_until:    wait_until,
           timeout_ms:    timeout_ms,
           scenario_name: scenario_name,
-          timestamp:     timestamp,
-          bust_cache:    bust_cache
+          timestamp:     timestamp
         )
       end
     end
@@ -71,6 +73,11 @@ module Perchfall
 
       raise ArgumentError,
             "wait_until must be one of #{VALID_WAIT_UNTIL.join(", ")}. Got: #{value.inspect}"
+    end
+
+    def append_cache_buster(url)
+      separator = url.include?("?") ? "&" : "?"
+      "#{url}#{separator}_perchfall=#{Time.now.utc.to_i}"
     end
 
     MAX_TIMEOUT_MS = 60_000

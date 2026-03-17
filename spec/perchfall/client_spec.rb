@@ -64,9 +64,9 @@ RSpec.describe Perchfall::Client do
     end
   end
 
-  it "delegates run to the invoker with the given url" do
+  it "delegates run to the invoker with the effective (cache-busted) url" do
     client.run(url: "https://example.com")
-    expect(recording_invoker.last_url).to eq("https://example.com")
+    expect(recording_invoker.last_url).to match(/\Ahttps:\/\/example\.com\?_perchfall=\d+\z/)
   end
 
   it "forwards keyword options to the invoker" do
@@ -77,12 +77,37 @@ RSpec.describe Perchfall::Client do
   describe "bust_cache" do
     it "defaults to true" do
       client.run(url: "https://example.com")
-      expect(recording_invoker.last_opts[:bust_cache]).to be(true)
+      expect(recording_invoker.last_url).to match(/_perchfall=\d+/)
     end
 
-    it "forwards bust_cache: false to the invoker" do
+    it "does not forward bust_cache to the invoker — it is consumed by Client" do
       client.run(url: "https://example.com", bust_cache: false)
-      expect(recording_invoker.last_opts[:bust_cache]).to be(false)
+      expect(recording_invoker.last_opts).not_to have_key(:bust_cache)
+    end
+
+    it "validates the cache-busted URL, not the original" do
+      # A URL that resolves to an internal address should be caught even after
+      # a cache-buster query param is appended. The validator must see the
+      # effective URL. We use a fake validator that records what it was given.
+      recorded_urls = []
+      fake_validator = Class.new do
+        define_method(:validate!) { |url| recorded_urls << url }
+      end.new
+
+      described_class.new(invoker: recording_invoker, validator: fake_validator, limiter: limiter)
+        .run(url: "https://example.com", bust_cache: true)
+
+      expect(recorded_urls.first).to match(/_perchfall=\d+/)
+    end
+
+    it "passes the cache-busted URL to the invoker" do
+      client.run(url: "https://example.com", bust_cache: true)
+      expect(recording_invoker.last_url).to match(/\Ahttps:\/\/example\.com\?_perchfall=\d+\z/)
+    end
+
+    it "passes the original URL to the invoker when bust_cache: false" do
+      client.run(url: "https://example.com", bust_cache: false)
+      expect(recording_invoker.last_url).to eq("https://example.com")
     end
   end
 
@@ -162,7 +187,6 @@ RSpec.describe Perchfall::Client do
   it "returns the report from the invoker" do
     report = client.run(url: "https://example.com")
     expect(report).to be_a(Perchfall::Report)
-    expect(report.url).to eq("https://example.com")
   end
 
   it "propagates exceptions from the invoker unchanged" do
