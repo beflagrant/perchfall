@@ -1,7 +1,7 @@
 # ADR 0013: Cache Busting via Query Parameter
 
 **Date:** 2026-03-17
-**Status:** Accepted
+**Status:** Superseded by [ADR 0017](0017-cache-profile-abstraction.md)
 
 ## Context
 

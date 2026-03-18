@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Accepted — supersedes [ADR 0013](0013-cache-busting-via-query-parameter.md)
 
 ## Context
 
@@ -71,5 +71,7 @@ The Hash form mutates no URL and sets the given headers verbatim. Any other Hash
 - `page.setExtraHTTPHeaders` applies to *all* requests during page load (main document + assets).
   This is intentional for cache-busting purposes but means the headers reach third-party origins
   too. Operators using `:no_cache` / `:no_store` should be aware of this.
-- The custom Hash form accepts arbitrary headers, so operators take responsibility for correctness
-  and security implications of any headers they inject.
+- The custom Hash form is validated against a `FORBIDDEN_HEADERS` denylist (see `Client::FORBIDDEN_HEADERS`)
+  that rejects credentials and routing headers (`Authorization`, `Cookie`, `Set-Cookie`, `Host`,
+  `X-Forwarded-For`, `X-Forwarded-Host`, `X-Real-IP`). Headers outside the denylist are accepted
+  verbatim; operators remain responsible for correctness of any headers they inject.
