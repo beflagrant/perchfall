@@ -132,6 +132,26 @@ RSpec.describe Perchfall::Parsers::PlaywrightJsonParser do
       end
     end
 
+    context "with screenshots in the payload" do
+      it "sets screenshots on the report when present" do
+        b64 = "aGVsbG8="
+        report = parser.parse(ok_json(screenshots: b64), timestamp: fixed_time)
+        expect(report.screenshots).to eq(b64)
+      end
+
+      it "sets screenshots to nil when absent from payload" do
+        report = parser.parse(ok_json(screenshots: nil), timestamp: fixed_time)
+        expect(report.screenshots).to be_nil
+      end
+
+      it "sets screenshots to nil when the field is missing entirely" do
+        json = { status: "ok", url: "https://example.com", duration_ms: 100,
+                 http_status: 200, network_errors: [], console_errors: [], error: nil }.to_json
+        report = parser.parse(json, timestamp: fixed_time)
+        expect(report.screenshots).to be_nil
+      end
+    end
+
     context "with a valid error payload" do
       it "returns a non-ok report" do
         report = parser.parse(error_json, timestamp: fixed_time)

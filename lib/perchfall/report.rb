@@ -17,10 +17,11 @@ module Perchfall
   #   console_errors         - Array<ConsoleError>: errors not matched by any ignore rule
   #   ignored_console_errors - Array<ConsoleError>: errors suppressed by ignore rules
   #   error                  - String or nil: set only when status == "error"
+  #   screenshots            - String or nil: base64-encoded PNG, present when screenshots were captured
   class Report
     attr_reader :status, :url, :scenario_name, :timestamp, :duration_ms,
                 :http_status, :network_errors, :ignored_network_errors,
-                :console_errors, :ignored_console_errors, :error
+                :console_errors, :ignored_console_errors, :error, :screenshots
 
     def initialize(
       status:,
@@ -33,7 +34,8 @@ module Perchfall
       ignored_network_errors: [],
       ignored_console_errors: [],
       scenario_name: nil,
-      timestamp: Time.now.utc
+      timestamp: Time.now.utc,
+      screenshots: nil
     )
       @status                 = status.freeze
       @url                    = url.freeze
@@ -46,6 +48,7 @@ module Perchfall
       @console_errors         = console_errors.freeze
       @ignored_console_errors = ignored_console_errors.freeze
       @error                  = error&.freeze
+      @screenshots            = screenshots&.freeze
       freeze
     end
 
@@ -53,8 +56,13 @@ module Perchfall
       status == "ok"
     end
 
-    def to_h
-      {
+    # Returns a hash representation of the report suitable for logging,
+    # storage, and transmission. Screenshot data is excluded by default
+    # because it can contain sensitive page content (session state, PII,
+    # internal tooling). Pass include_screenshots: true only when you have
+    # explicitly decided it is safe to include in the output destination.
+    def to_h(include_screenshots: false)
+      h = {
         status:         status,
         url:            url,
         scenario_name:  scenario_name,
@@ -68,14 +76,18 @@ module Perchfall
         ignored_console_errors: ignored_console_errors.map(&:to_h),
         error:          error
       }
+      h[:screenshots] = screenshots if include_screenshots
+      h
     end
 
-    def to_json(...)
-      to_h.to_json(...)
+    def to_json(*args, include_screenshots: false, **opts)
+      to_h(include_screenshots: include_screenshots).to_json(*args, **opts)
     end
 
     def ==(other)
-      other.is_a?(Report) && to_h == other.to_h
+      other.is_a?(Report) &&
+        to_h == other.to_h &&
+        screenshots == other.screenshots
     end
   end
 end

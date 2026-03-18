@@ -39,8 +39,24 @@ RSpec.describe Perchfall::Report do
     end
   end
 
+  describe "#screenshots" do
+    it "defaults to nil" do
+      expect(build_report.screenshots).to be_nil
+    end
+
+    it "accepts a base64 string" do
+      report = build_report(screenshots: "aGVsbG8=")
+      expect(report.screenshots).to eq("aGVsbG8=")
+    end
+
+    it "is frozen when set" do
+      report = build_report(screenshots: "aGVsbG8=")
+      expect(report.screenshots).to be_frozen
+    end
+  end
+
   describe "#to_h" do
-    it "includes all top-level keys" do
+    it "includes all top-level keys except screenshots by default" do
       h = build_report.to_h
       expect(h.keys).to contain_exactly(
         :status, :url, :scenario_name, :timestamp, :ok,
@@ -49,6 +65,22 @@ RSpec.describe Perchfall::Report do
         :console_errors, :ignored_console_errors,
         :error
       )
+    end
+
+    it "excludes screenshots by default even when one is present" do
+      report = build_report(screenshots: "aGVsbG8=")
+      expect(report.to_h).not_to have_key(:screenshots)
+    end
+
+    it "includes screenshots when include_screenshots: true" do
+      report = build_report(screenshots: "aGVsbG8=")
+      expect(report.to_h(include_screenshots: true)[:screenshots]).to eq("aGVsbG8=")
+    end
+
+    it "includes screenshots: nil when include_screenshots: true and no screenshot was captured" do
+      report = build_report(screenshots: nil)
+      expect(report.to_h(include_screenshots: true)).to have_key(:screenshots)
+      expect(report.to_h(include_screenshots: true)[:screenshots]).to be_nil
     end
 
     it "serializes ignored_network_errors as plain hashes" do
@@ -104,6 +136,17 @@ RSpec.describe Perchfall::Report do
       expect(parsed["ok"]).to eq(true)
       expect(parsed["network_errors"]).to eq([])
     end
+
+    it "excludes screenshots by default" do
+      report = build_report(screenshots: "aGVsbG8=")
+      expect(JSON.parse(report.to_json)).not_to have_key("screenshots")
+    end
+
+    it "includes screenshots when include_screenshots: true" do
+      report = build_report(screenshots: "aGVsbG8=")
+      parsed = JSON.parse(report.to_json(include_screenshots: true))
+      expect(parsed["screenshots"]).to eq("aGVsbG8=")
+    end
   end
 
   describe "#==" do
@@ -118,6 +161,13 @@ RSpec.describe Perchfall::Report do
       t = Time.utc(2026, 1, 1)
       a = build_report(timestamp: t, http_status: 200)
       b = build_report(timestamp: t, http_status: 404)
+      expect(a).not_to eq(b)
+    end
+
+    it "is not equal when screenshots differ" do
+      t = Time.utc(2026, 1, 1)
+      a = build_report(timestamp: t, screenshots: "aGVsbG8=")
+      b = build_report(timestamp: t, screenshots: nil)
       expect(a).not_to eq(b)
     end
   end

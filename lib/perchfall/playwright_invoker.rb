@@ -24,9 +24,9 @@ module Perchfall
       @script_path = script_path
     end
 
-    def run(url:, timestamp:, timeout_ms: 30_000, wait_until: "load", scenario_name: nil, ignore: [], original_url: nil)
+    def run(url:, timestamp:, timeout_ms: 30_000, wait_until: "load", scenario_name: nil, ignore: [], original_url: nil, screenshots: :on_error)
       parser = build_parser(ignore)
-      result = execute(build_command(url: url, timeout_ms: timeout_ms, wait_until: wait_until))
+      result = execute(build_command(url: url, timeout_ms: timeout_ms, wait_until: wait_until, screenshots: screenshots))
       report = parse(result, parser: parser, scenario_name: scenario_name, timestamp: timestamp, original_url: original_url || url)
       raise_if_page_load_error(report)
       report
@@ -38,8 +38,8 @@ module Perchfall
       Parsers::PlaywrightJsonParser.new(filter: ErrorFilter.new(rules: ignore_rules))
     end
 
-    def build_command(url:, timeout_ms:, wait_until:)
-      ["node", @script_path, "--url", url, "--timeout", timeout_ms.to_s, "--wait-until", wait_until]
+    def build_command(url:, timeout_ms:, wait_until:, screenshots:)
+      ["node", @script_path, "--url", url, "--timeout", timeout_ms.to_s, "--wait-until", wait_until, "--screenshot", screenshots.to_s]
     end
 
     def execute(command)
