@@ -22,7 +22,8 @@ module Perchfall
   # Client is intentionally thin. It owns the public method signature
   # and delegates all real work to the invoker.
   class Client
-    VALID_WAIT_UNTIL = %w[load domcontentloaded networkidle commit].freeze
+    VALID_WAIT_UNTIL  = %w[load domcontentloaded networkidle commit].freeze
+    VALID_SCREENSHOTS = %i[always on_error never].freeze
 
     def initialize(
       invoker:   PlaywrightInvoker.new,
@@ -48,11 +49,12 @@ module Perchfall
     # @raise [Errors::ParseError] if the script output was not valid JSON
     # @raise [Errors::PageLoadError] if the page itself failed to load
 
-    def run(url:, ignore: [], wait_until: "load", timeout_ms: 30_000, scenario_name: nil, timestamp: Time.now.utc, bust_cache: true)
+    def run(url:, ignore: [], wait_until: "load", timeout_ms: 30_000, scenario_name: nil, timestamp: Time.now.utc, bust_cache: true, screenshots: :on_error)
       effective_url = bust_cache ? append_cache_buster(url) : url
       @validator.validate!(effective_url)
       validate_wait_until!(wait_until)
       validate_timeout_ms!(timeout_ms)
+      validate_screenshots!(screenshots)
       merged_ignore = Perchfall::DEFAULT_IGNORE_RULES + ignore
       @limiter.acquire do
         @invoker.run(
@@ -62,7 +64,8 @@ module Perchfall
           wait_until:    wait_until,
           timeout_ms:    timeout_ms,
           scenario_name: scenario_name,
-          timestamp:     timestamp
+          timestamp:     timestamp,
+          screenshots:   screenshots
         )
       end
     end
@@ -88,6 +91,13 @@ module Perchfall
 
       raise ArgumentError,
             "timeout_ms must be a positive integer no greater than #{MAX_TIMEOUT_MS}. Got: #{value.inspect}"
+    end
+
+    def validate_screenshots!(value)
+      return if VALID_SCREENSHOTS.include?(value)
+
+      raise ArgumentError,
+            "screenshots must be one of #{VALID_SCREENSHOTS.map(&:inspect).join(", ")}. Got: #{value.inspect}"
     end
   end
 end

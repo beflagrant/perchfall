@@ -20,9 +20,10 @@ const { parseArgs } = require("node:util");
 
 const { values: args } = parseArgs({
   options: {
-    url:        { type: "string" },
-    timeout:    { type: "string", default: "30000" },
+    url:          { type: "string" },
+    timeout:      { type: "string", default: "30000" },
     "wait-until": { type: "string", default: "load" },
+    screenshot:   { type: "string", default: "on_error" },
   },
   strict: true,
 });
@@ -35,12 +36,13 @@ if (!args.url) {
 const TARGET_URL  = args.url;
 const TIMEOUT_MS  = parseInt(args.timeout, 10);
 const WAIT_UNTIL  = args["wait-until"];
+const SCREENSHOT  = args.screenshot; // "always" | "on_error" | "never"
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-function buildResult({ status, durationMs, httpStatus, networkErrors, consoleErrors, error }) {
+function buildResult({ status, durationMs, httpStatus, networkErrors, consoleErrors, error, screenshot }) {
   return JSON.stringify({
     status,
     url:            TARGET_URL,
@@ -49,7 +51,13 @@ function buildResult({ status, durationMs, httpStatus, networkErrors, consoleErr
     network_errors: networkErrors,
     console_errors: consoleErrors,
     error:          error ?? null,
+    screenshots:    screenshot ?? null,
   });
+}
+
+async function captureScreenshot(page) {
+  const buffer = await page.screenshot({ type: "png" });
+  return buffer.toString("base64");
 }
 
 // ---------------------------------------------------------------------------
@@ -105,6 +113,7 @@ async function run() {
     });
 
     const durationMs = Date.now() - startedAt;
+    const screenshot = SCREENSHOT === "always" ? await captureScreenshot(page) : null;
 
     process.stdout.write(buildResult({
       status:        "ok",
@@ -113,6 +122,7 @@ async function run() {
       networkErrors,
       consoleErrors,
       error:         null,
+      screenshot,
     }));
 
     process.exit(0);
@@ -120,6 +130,9 @@ async function run() {
   } catch (err) {
     // Page-level failure (timeout, DNS, etc.) — exit 0 so Ruby reads the JSON.
     const durationMs = Date.now() - startedAt;
+    const screenshot = SCREENSHOT === "always" || SCREENSHOT === "on_error"
+      ? await captureScreenshot(page).catch(() => null)
+      : null;
 
     process.stdout.write(buildResult({
       status:        "error",
@@ -128,6 +141,7 @@ async function run() {
       networkErrors,
       consoleErrors,
       error:         err.message,
+      screenshot,
     }));
 
     process.exit(0);

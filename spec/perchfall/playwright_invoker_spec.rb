@@ -56,7 +56,7 @@ RSpec.describe Perchfall::PlaywrightInvoker do
     end
 
     context "command construction" do
-      it "passes --url and --timeout to node" do
+      it "passes --url, --timeout, --wait-until, and --screenshot to node" do
         runner = FakeCommandRunner.new(stdout: ok_json)
         invoker = described_class.new(runner: runner)
         invoker.run(url: "https://example.com", timeout_ms: 5_000, timestamp: fixed_time)
@@ -65,7 +65,8 @@ RSpec.describe Perchfall::PlaywrightInvoker do
           Perchfall::PlaywrightInvoker::DEFAULT_SCRIPT_PATH,
           "--url", "https://example.com",
           "--timeout", "5000",
-          "--wait-until", "load"
+          "--wait-until", "load",
+          "--screenshot", "on_error"
         ])
       end
 
@@ -74,6 +75,20 @@ RSpec.describe Perchfall::PlaywrightInvoker do
         invoker = described_class.new(runner: runner)
         invoker.run(url: "https://example.com", timestamp: fixed_time)
         expect(runner.last_command).to include("30000")
+      end
+
+      it "passes :always as 'always' to node" do
+        runner = FakeCommandRunner.new(stdout: ok_json)
+        invoker = described_class.new(runner: runner)
+        invoker.run(url: "https://example.com", timestamp: fixed_time, screenshots: :always)
+        expect(runner.last_command).to include("--screenshot", "always")
+      end
+
+      it "passes :never as 'never' to node" do
+        runner = FakeCommandRunner.new(stdout: ok_json)
+        invoker = described_class.new(runner: runner)
+        invoker.run(url: "https://example.com", timestamp: fixed_time, screenshots: :never)
+        expect(runner.last_command).to include("--screenshot", "never")
       end
     end
 

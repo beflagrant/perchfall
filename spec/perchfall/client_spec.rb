@@ -194,6 +194,35 @@ RSpec.describe Perchfall::Client do
     end
   end
 
+  describe "screenshots validation" do
+    it "accepts :always" do
+      expect { client.run(url: "https://example.com", screenshots: :always) }.not_to raise_error
+    end
+
+    it "accepts :on_error" do
+      expect { client.run(url: "https://example.com", screenshots: :on_error) }.not_to raise_error
+    end
+
+    it "accepts :never" do
+      expect { client.run(url: "https://example.com", screenshots: :never) }.not_to raise_error
+    end
+
+    it "defaults to :on_error" do
+      client.run(url: "https://example.com")
+      expect(recording_invoker.last_opts[:screenshots]).to eq(:on_error)
+    end
+
+    it "rejects an unknown screenshots value" do
+      expect { client.run(url: "https://example.com", screenshots: :sometimes) }
+        .to raise_error(ArgumentError, /screenshots/)
+    end
+
+    it "forwards screenshots to the invoker" do
+      client.run(url: "https://example.com", screenshots: :always)
+      expect(recording_invoker.last_opts[:screenshots]).to eq(:always)
+    end
+  end
+
   it "returns the report from the invoker" do
     report = client.run(url: "https://example.com")
     expect(report).to be_a(Perchfall::Report)

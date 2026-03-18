@@ -11,7 +11,8 @@ module PlaywrightJsonFixture
       http_status:    200,
       network_errors: [],
       console_errors: [],
-      error:          nil
+      error:          nil,
+      screenshots:    nil
     }
     base.merge(overrides).to_json
   end
@@ -24,7 +25,8 @@ module PlaywrightJsonFixture
       http_status:    nil,
       network_errors: [],
       console_errors: [],
-      error:          "net::ERR_NAME_NOT_RESOLVED"
+      error:          "net::ERR_NAME_NOT_RESOLVED",
+      screenshots:    nil
     }
     base.merge(overrides).to_json
   end

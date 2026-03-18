@@ -37,7 +37,8 @@ module Perchfall
           ignored_console_errors: console_filtered[:ignored],
           error:                  data[:error],
           scenario_name:          scenario_name,
-          timestamp:              timestamp
+          timestamp:              timestamp,
+          screenshots:            data[:screenshots]
         )
       rescue KeyError => e
         raise Errors::ParseError, "Playwright JSON missing required field: #{e.message}"
