@@ -23,6 +23,7 @@ const { values: args } = parseArgs({
     url:        { type: "string" },
     timeout:    { type: "string", default: "30000" },
     "wait-until": { type: "string", default: "load" },
+    headers:    { type: "string", default: "{}" },
   },
   strict: true,
 });
@@ -32,9 +33,10 @@ if (!args.url) {
   process.exit(1);
 }
 
-const TARGET_URL  = args.url;
-const TIMEOUT_MS  = parseInt(args.timeout, 10);
-const WAIT_UNTIL  = args["wait-until"];
+const TARGET_URL    = args.url;
+const TIMEOUT_MS    = parseInt(args.timeout, 10);
+const WAIT_UNTIL    = args["wait-until"];
+const EXTRA_HEADERS = JSON.parse(args.headers);
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -65,6 +67,10 @@ async function run() {
   try {
     browser = await chromium.launch({ headless: true });
     const page = await browser.newPage();
+
+    if (Object.keys(EXTRA_HEADERS).length > 0) {
+      await page.setExtraHTTPHeaders(EXTRA_HEADERS);
+    }
 
     // Collect failed network requests (4xx/5xx responses + connection failures).
     page.on("requestfailed", (request) => {

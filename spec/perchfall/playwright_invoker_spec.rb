@@ -32,7 +32,7 @@ RSpec.describe Perchfall::PlaywrightInvoker do
 
       it "uses original_url for report.url when provided" do
         report = invoker.run(
-          url:          "https://example.com?_perchfall=123",
+          url:          "https://example.com?_pf=123",
           original_url: "https://example.com",
           timestamp:    fixed_time
         )
@@ -74,6 +74,32 @@ RSpec.describe Perchfall::PlaywrightInvoker do
         invoker = described_class.new(runner: runner)
         invoker.run(url: "https://example.com", timestamp: fixed_time)
         expect(runner.last_command).to include("30000")
+      end
+
+      it "appends --headers JSON when extra_headers are provided" do
+        runner = FakeCommandRunner.new(stdout: ok_json)
+        invoker = described_class.new(runner: runner)
+        invoker.run(
+          url: "https://example.com", timestamp: fixed_time,
+          extra_headers: { "Cache-Control" => "no-cache" }
+        )
+        idx = runner.last_command.index("--headers")
+        expect(idx).not_to be_nil
+        expect(runner.last_command[idx + 1]).to eq('{"Cache-Control":"no-cache"}')
+      end
+
+      it "omits --headers when extra_headers is empty" do
+        runner = FakeCommandRunner.new(stdout: ok_json)
+        invoker = described_class.new(runner: runner)
+        invoker.run(url: "https://example.com", timestamp: fixed_time, extra_headers: {})
+        expect(runner.last_command).not_to include("--headers")
+      end
+
+      it "omits --headers when extra_headers is not provided" do
+        runner = FakeCommandRunner.new(stdout: ok_json)
+        invoker = described_class.new(runner: runner)
+        invoker.run(url: "https://example.com", timestamp: fixed_time)
+        expect(runner.last_command).not_to include("--headers")
       end
     end
 

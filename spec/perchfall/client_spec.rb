@@ -15,7 +15,8 @@ RSpec.describe Perchfall::Client do
         @last_opts = opts.merge(original_url: original_url)
         Perchfall::Report.new(
           status: "ok", url: original_url || url, duration_ms: 1,
-          http_status: 200, network_errors: [], console_errors: [], error: nil
+          http_status: 200, network_errors: [], console_errors: [], error: nil,
+          cache_profile: opts[:cache_profile]
         )
       end
     end.new
@@ -64,9 +65,9 @@ RSpec.describe Perchfall::Client do
     end
   end
 
-  it "delegates run to the invoker with the effective (cache-busted) url" do
+  it "delegates run to the invoker with the effective (cache-busted) url by default" do
     client.run(url: "https://example.com")
-    expect(recording_invoker.last_url).to match(/\Ahttps:\/\/example\.com\?_perchfall=\d+\z/)
+    expect(recording_invoker.last_url).to match(/\Ahttps:\/\/example\.com\?_pf=\d+\z/)
   end
 
   it "forwards keyword options to the invoker" do
@@ -74,50 +75,99 @@ RSpec.describe Perchfall::Client do
     expect(recording_invoker.last_opts).to include(timeout_ms: 9_000, scenario_name: "smoke")
   end
 
-  describe "bust_cache" do
-    it "defaults to true" do
+  describe "cache_profile" do
+    it "defaults to :query_bust" do
       client.run(url: "https://example.com")
-      expect(recording_invoker.last_url).to match(/_perchfall=\d+/)
+      expect(recording_invoker.last_url).to match(/_pf=\d+/)
     end
 
-    it "does not forward bust_cache to the invoker — it is consumed by Client" do
-      client.run(url: "https://example.com", bust_cache: false)
-      expect(recording_invoker.last_opts).not_to have_key(:bust_cache)
+    it "uses _pf as the query param name (not _perchfall)" do
+      client.run(url: "https://example.com")
+      expect(recording_invoker.last_url).not_to match(/_perchfall=/)
+      expect(recording_invoker.last_url).to match(/_pf=\d+/)
+    end
+
+    it "forwards cache_profile to the invoker so it can be stamped on the report" do
+      client.run(url: "https://example.com", cache_profile: :warm)
+      expect(recording_invoker.last_opts[:cache_profile]).to eq(:warm)
     end
 
     it "validates the cache-busted URL, not the original" do
-      # A URL that resolves to an internal address should be caught even after
-      # a cache-buster query param is appended. The validator must see the
-      # effective URL. We use a fake validator that records what it was given.
       recorded_urls = []
       fake_validator = Class.new do
         define_method(:validate!) { |url| recorded_urls << url }
       end.new
 
       described_class.new(invoker: recording_invoker, validator: fake_validator, limiter: limiter)
-        .run(url: "https://example.com", bust_cache: true)
+        .run(url: "https://example.com", cache_profile: :query_bust)
 
-      expect(recorded_urls.first).to match(/_perchfall=\d+/)
+      expect(recorded_urls.first).to match(/_pf=\d+/)
     end
 
-    it "passes the cache-busted URL to the invoker" do
-      client.run(url: "https://example.com", bust_cache: true)
-      expect(recording_invoker.last_url).to match(/\Ahttps:\/\/example\.com\?_perchfall=\d+\z/)
+    it ":query_bust appends _pf= to the URL" do
+      client.run(url: "https://example.com", cache_profile: :query_bust)
+      expect(recording_invoker.last_url).to match(/\Ahttps:\/\/example\.com\?_pf=\d+\z/)
     end
 
-    it "passes the original URL to the invoker when bust_cache: false" do
-      client.run(url: "https://example.com", bust_cache: false)
+    it ":warm passes the URL unchanged" do
+      client.run(url: "https://example.com", cache_profile: :warm)
       expect(recording_invoker.last_url).to eq("https://example.com")
     end
 
+    it ":no_cache passes the URL unchanged and sets Cache-Control header" do
+      client.run(url: "https://example.com", cache_profile: :no_cache)
+      expect(recording_invoker.last_url).to eq("https://example.com")
+      expect(recording_invoker.last_opts[:extra_headers]).to eq("Cache-Control" => "no-cache")
+    end
+
+    it ":no_store passes the URL unchanged and sets Cache-Control + Pragma headers" do
+      client.run(url: "https://example.com", cache_profile: :no_store)
+      expect(recording_invoker.last_url).to eq("https://example.com")
+      expect(recording_invoker.last_opts[:extra_headers]).to eq(
+        "Cache-Control" => "no-store, no-cache",
+        "Pragma"        => "no-cache"
+      )
+    end
+
+    it ":query_bust does not forward extra_headers" do
+      client.run(url: "https://example.com", cache_profile: :query_bust)
+      expect(recording_invoker.last_opts).not_to have_key(:extra_headers)
+    end
+
+    it ":warm does not forward extra_headers" do
+      client.run(url: "https://example.com", cache_profile: :warm)
+      expect(recording_invoker.last_opts).not_to have_key(:extra_headers)
+    end
+
+    it "accepts a custom hash with headers:" do
+      client.run(url: "https://example.com", cache_profile: { headers: { "Cache-Control" => "max-age=0" } })
+      expect(recording_invoker.last_url).to eq("https://example.com")
+      expect(recording_invoker.last_opts[:extra_headers]).to eq("Cache-Control" => "max-age=0")
+    end
+
+    it "rejects an unknown symbol" do
+      expect { client.run(url: "https://example.com", cache_profile: :turbo_flush) }
+        .to raise_error(ArgumentError, /cache_profile/)
+    end
+
     it "passes the original URL as original_url: so the report reflects the caller's URL" do
-      client.run(url: "https://example.com", bust_cache: true)
+      client.run(url: "https://example.com", cache_profile: :query_bust)
       expect(recording_invoker.last_opts[:original_url]).to eq("https://example.com")
     end
 
     it "report.url is the original URL, not the cache-busted URL" do
-      report = client.run(url: "https://example.com", bust_cache: true)
+      report = client.run(url: "https://example.com", cache_profile: :query_bust)
       expect(report.url).to eq("https://example.com")
+    end
+
+    it "includes cache_profile in the report" do
+      report = client.run(url: "https://example.com", cache_profile: :no_cache)
+      expect(report.cache_profile).to eq(:no_cache)
+    end
+
+    it "includes cache_profile in report.to_h" do
+      report = client.run(url: "https://example.com", cache_profile: :warm)
+      expect(report.to_h[:cache_profile]).to eq(:warm)
     end
   end
 

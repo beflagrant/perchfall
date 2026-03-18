@@ -13,16 +13,16 @@ module Perchfall
         @filter = filter
       end
 
-      def parse(raw_json, timestamp:, scenario_name: nil, original_url: nil)
+      def parse(raw_json, timestamp:, scenario_name: nil, original_url: nil, cache_profile: nil)
         data = JSON.parse(raw_json, symbolize_names: true)
-        build_report(data, scenario_name: scenario_name, timestamp: timestamp, original_url: original_url)
+        build_report(data, scenario_name: scenario_name, timestamp: timestamp, original_url: original_url, cache_profile: cache_profile)
       rescue JSON::ParserError => e
         raise Errors::ParseError, "Invalid JSON from Playwright script: #{e.message}"
       end
 
       private
 
-      def build_report(data, scenario_name:, timestamp:, original_url: nil)
+      def build_report(data, scenario_name:, timestamp:, original_url: nil, cache_profile: nil)
         net_filtered     = @filter.filter_network(parse_network_errors(data.fetch(:network_errors, [])))
         console_filtered = @filter.filter_console(parse_console_errors(data.fetch(:console_errors, [])))
 
@@ -37,7 +37,8 @@ module Perchfall
           ignored_console_errors: console_filtered[:ignored],
           error:                  data[:error],
           scenario_name:          scenario_name,
-          timestamp:              timestamp
+          timestamp:              timestamp,
+          cache_profile:          cache_profile
         )
       rescue KeyError => e
         raise Errors::ParseError, "Playwright JSON missing required field: #{e.message}"
