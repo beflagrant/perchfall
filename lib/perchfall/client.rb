@@ -25,11 +25,24 @@ module Perchfall
     VALID_WAIT_UNTIL = %w[load domcontentloaded networkidle commit].freeze
 
     CACHE_PROFILES = {
-      query_bust: { bust_url: true,  headers: {} },
-      warm:       { bust_url: false, headers: {} },
-      no_cache:   { bust_url: false, headers: { "Cache-Control" => "no-cache" } },
-      no_store:   { bust_url: false, headers: { "Cache-Control" => "no-store, no-cache", "Pragma" => "no-cache" } }
+      query_bust: { bust_url: true,  headers: {}.freeze }.freeze,
+      warm:       { bust_url: false, headers: {}.freeze }.freeze,
+      no_cache:   { bust_url: false, headers: { "Cache-Control" => "no-cache" }.freeze }.freeze,
+      no_store:   { bust_url: false, headers: { "Cache-Control" => "no-store, no-cache", "Pragma" => "no-cache" }.freeze }.freeze
     }.freeze
+
+    # Headers that could carry credentials, impersonate infrastructure, or
+    # manipulate routing. Rejected in custom cache profiles to prevent
+    # accidental or malicious injection into all page-load requests.
+    FORBIDDEN_HEADERS = %w[
+      authorization
+      cookie
+      set-cookie
+      host
+      x-forwarded-for
+      x-forwarded-host
+      x-real-ip
+    ].freeze
 
     def initialize(
       invoker:   PlaywrightInvoker.new,
@@ -93,7 +106,20 @@ module Perchfall
           raise ArgumentError, "cache_profile must be one of #{CACHE_PROFILES.keys.join(", ")} or a Hash with :headers. Got: #{profile.inspect}"
         end
       else
-        { bust_url: false, headers: profile.fetch(:headers, {}) }
+        headers = profile.fetch(:headers, {})
+        validate_custom_headers!(headers)
+        { bust_url: false, headers: headers }
+      end
+    end
+
+    def validate_custom_headers!(headers)
+      headers.each_key do |name|
+        if FORBIDDEN_HEADERS.include?(name.to_s.downcase)
+          raise ArgumentError,
+                "cache_profile contains a forbidden header: #{name.inspect}. " \
+                "Headers that carry credentials or influence routing (#{FORBIDDEN_HEADERS.join(", ")}) " \
+                "may not be set via cache_profile."
+        end
       end
     end
 

@@ -145,6 +145,40 @@ RSpec.describe Perchfall::Client do
       expect(recording_invoker.last_opts[:extra_headers]).to eq("Cache-Control" => "max-age=0")
     end
 
+    describe "custom header validation" do
+      %w[
+        Authorization
+        Cookie
+        Set-Cookie
+        Host
+        X-Forwarded-For
+        X-Forwarded-Host
+        X-Real-IP
+      ].each do |forbidden|
+        it "rejects #{forbidden} header in custom profile" do
+          expect {
+            client.run(url: "https://example.com", cache_profile: { headers: { forbidden => "value" } })
+          }.to raise_error(ArgumentError, /#{Regexp.escape(forbidden)}/)
+        end
+
+        it "rejects #{forbidden} header case-insensitively" do
+          expect {
+            client.run(url: "https://example.com", cache_profile: { headers: { forbidden.downcase => "value" } })
+          }.to raise_error(ArgumentError, /#{Regexp.escape(forbidden.downcase)}/i)
+        end
+      end
+
+      it "accepts safe cache-related headers" do
+        expect {
+          client.run(url: "https://example.com", cache_profile: { headers: {
+            "Cache-Control" => "no-cache",
+            "Pragma"        => "no-cache",
+            "Accept"        => "text/html"
+          } })
+        }.not_to raise_error
+      end
+    end
+
     it "rejects an unknown symbol" do
       expect { client.run(url: "https://example.com", cache_profile: :turbo_flush) }
         .to raise_error(ArgumentError, /cache_profile/)
