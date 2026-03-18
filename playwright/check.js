@@ -33,10 +33,34 @@ if (!args.url) {
   process.exit(1);
 }
 
-const TARGET_URL    = args.url;
-const TIMEOUT_MS    = parseInt(args.timeout, 10);
-const WAIT_UNTIL    = args["wait-until"];
-const EXTRA_HEADERS = JSON.parse(args.headers);
+const TARGET_URL = args.url;
+const TIMEOUT_MS = parseInt(args.timeout, 10);
+const WAIT_UNTIL = args["wait-until"];
+
+let EXTRA_HEADERS;
+try {
+  const parsed = JSON.parse(args.headers);
+  if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new TypeError("--headers must be a JSON object, got: " + args.headers);
+  }
+  for (const [key, value] of Object.entries(parsed)) {
+    if (typeof value !== "string") {
+      throw new TypeError(`--headers value for "${key}" must be a string, got ${typeof value}`);
+    }
+  }
+  EXTRA_HEADERS = parsed;
+} catch (err) {
+  process.stdout.write(JSON.stringify({
+    status:         "error",
+    url:            TARGET_URL,
+    duration_ms:    0,
+    http_status:    null,
+    network_errors: [],
+    console_errors: [],
+    error:          "Invalid --headers: " + err.message,
+  }));
+  process.exit(0);
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
