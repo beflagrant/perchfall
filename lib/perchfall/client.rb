@@ -69,11 +69,11 @@ module Perchfall
     # @raise [Errors::PageLoadError] if the page itself failed to load
 
     def run(url:, ignore: [], wait_until: "load", timeout_ms: 30_000, scenario_name: nil, timestamp: Time.now.utc, cache_profile: :query_bust)
-      profile       = resolve_cache_profile!(cache_profile)
-      effective_url = profile[:bust_url] ? append_cache_buster(url) : url
-      @validator.validate!(effective_url)
+      profile = resolve_cache_profile!(cache_profile)
       validate_wait_until!(wait_until)
       validate_timeout_ms!(timeout_ms)
+      effective_url = profile[:bust_url] ? append_cache_buster(url) : url
+      @validator.validate!(effective_url)
       merged_ignore = Perchfall::DEFAULT_IGNORE_RULES + ignore
       invoker_opts  = {
         url:           effective_url,

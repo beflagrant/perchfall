@@ -226,6 +226,18 @@ RSpec.describe Perchfall::Client do
       client.run(url: "https://example.com", wait_until: "bogus") rescue nil
       expect(recording_invoker.last_url).to be_nil
     end
+
+    it "rejects wait_until before building the effective URL" do
+      validated_urls = []
+      fake_validator = Class.new do
+        define_method(:validate!) { |url| validated_urls << url }
+      end.new
+
+      described_class.new(invoker: recording_invoker, validator: fake_validator, limiter: limiter)
+        .run(url: "https://example.com", wait_until: "bogus") rescue nil
+
+      expect(validated_urls).to be_empty
+    end
   end
 
   describe "timeout_ms validation" do
@@ -260,6 +272,18 @@ RSpec.describe Perchfall::Client do
     it "rejects timeout_ms before invoking Playwright" do
       client.run(url: "https://example.com", timeout_ms: -1) rescue nil
       expect(recording_invoker.last_url).to be_nil
+    end
+
+    it "rejects timeout_ms before building the effective URL" do
+      validated_urls = []
+      fake_validator = Class.new do
+        define_method(:validate!) { |url| validated_urls << url }
+      end.new
+
+      described_class.new(invoker: recording_invoker, validator: fake_validator, limiter: limiter)
+        .run(url: "https://example.com", timeout_ms: -1) rescue nil
+
+      expect(validated_urls).to be_empty
     end
   end
 
