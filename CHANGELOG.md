@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-03-19
+
+### Added
+
+- `cache_profile:` option on `Perchfall.run` — replaces `bust_cache:` with four named profiles:
+  - `:query_bust` (default) — appends `?_pf=<unix_timestamp>` to force a cold fetch
+  - `:warm` — no URL mutation, no extra headers; measures real-user warm-cache experience
+  - `:no_cache` — sets `Cache-Control: no-cache` on all requests (main document + sub-resources)
+  - `:no_store` — sets `Cache-Control: no-store, no-cache` and `Pragma: no-cache`
+  - Custom Hash form: `cache_profile: { headers: { "Cache-Control" => "max-age=0" } }`
+- `report.cache_profile` — cache profile is stored on the `Report` and included in `to_h` / `to_json`
+- `--headers` argument to `playwright/check.js` — extra HTTP headers applied via `page.setExtraHTTPHeaders`
+- `check.js` integration specs (15 examples, tagged `:js`); excluded from default run, opt-in via `RUN_JS_SPECS=true`
+- `check-js.yml` GitHub Actions workflow — runs automatically when `playwright/check.js` or its specs change; caches Playwright Chromium binary keyed on `package-lock.json`
+
+### Changed
+
+- Renamed cache-bust query parameter from `_perchfall=` to `_pf=` (shorter, less intrusive in logs)
+- Validation order: `cache_profile` → `wait_until` → `timeout_ms` → URL validation — invalid params now raise before the effective URL is built
+- `check.js` now writes a `status: "error"` JSON result (exit 0) for malformed or non-object `--headers` instead of crashing
+
+### Breaking Changes
+
+- `bust_cache:` keyword argument removed. Migrate: `bust_cache: false` → `cache_profile: :warm`; `bust_cache: true` → `cache_profile: :query_bust` (or omit — it is the default)
+- Cache-bust query parameter renamed from `_perchfall=` to `_pf=` — update any log filters or URL allow-lists
+
+### Security
+
+- Custom `cache_profile` headers validated against a `FORBIDDEN_HEADERS` denylist (`Authorization`, `Cookie`, `Set-Cookie`, `Host`, `X-Forwarded-For`, `X-Forwarded-Host`, `X-Real-IP`) — these cannot be injected via the custom Hash form
+
 ## [0.1.0] - 2026-03-17
 
 ### Added
@@ -26,5 +56,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Full dependency injection throughout — test suite runs in ~0.4 s with no browser, Node, or network required
 - GitHub Actions CI workflow (unit suite) and manual Playwright smoke check workflow
 
-[Unreleased]: https://github.com/beflagrant/perchfall/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/beflagrant/perchfall/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/beflagrant/perchfall/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/beflagrant/perchfall/releases/tag/v0.1.0
