@@ -5,11 +5,11 @@
 
 ## Context
 
-After ADR 0013 introduced cache busting, `report.url` contained the cache-busted URL (e.g. `https://example.com?_perchfall=1773761362`) rather than the URL the caller passed. This is because `playwright/check.js` reflects `TARGET_URL` — the URL it was given — verbatim into the JSON output, and the parser used that value directly for `Report#url`.
+After ADR 0013 introduced cache busting, `report.url` contained the cache-busted URL (e.g. `https://example.com?_pf=1773761362`) rather than the URL the caller passed. This is because `playwright/check.js` reflects `TARGET_URL` — the URL it was given — verbatim into the JSON output, and the parser used that value directly for `Report#url`.
 
 This caused two concrete problems:
 
-1. **Database queries break.** Callers storing reports and querying by URL get mismatches: they query for `https://example.com` but the stored value is `https://example.com?_perchfall=1773761362`.
+1. **Database queries break.** Callers storing reports and querying by URL get mismatches: they query for `https://example.com` but the stored value is `https://example.com?_pf=1773761362`.
 2. **Leaking implementation details.** `_perchfall` is an internal mechanism. Exposing it in the report's `url` field surfaces implementation noise in logs, dashboards, and serialised payloads that consumers should not need to know about.
 
 ## Decision
@@ -23,6 +23,6 @@ The original (pre-bust) URL is passed from `Client` to `PlaywrightInvoker` as `o
 ## Consequences
 
 - `report.url` always reflects the URL the caller passed to `Perchfall.run`, regardless of cache-busting.
-- The `_perchfall` parameter is fully internal — it does not appear in any public-facing data.
+- The cache-busting parameter (`_pf=`) is fully internal — it does not appear in any public-facing data.
 - The JSON produced by `check.js` still contains the cache-busted URL in its `url` field, but this value is overridden during parsing and never surfaces to callers.
 - `PlaywrightInvoker` and `PlaywrightJsonParser` each carry a new `original_url:` parameter. Direct invoker users who care about this distinction should pass it explicitly; those who don't can rely on the fallback.

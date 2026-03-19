@@ -5,23 +5,31 @@
 
 ## Context
 
-The gem has two distinct testing concerns with very different resource requirements:
+The gem has three distinct testing concerns with very different resource requirements:
 
-1. **The Ruby unit suite** — 100 examples, no browser, no Node, no network. Runs in ~0.4s. Should give developers fast, automatic feedback on every push and every PR.
+1. **The Ruby unit suite** — 208 examples, no browser, no Node, no network. Runs in ~0.5s. Should give developers fast, automatic feedback on every push and every PR.
 
-2. **Real browser execution** — requires Node 18+, Playwright, and a Chromium binary (~300MB download). Takes 30–60s per check. Cannot be meaningfully parallelised across arbitrary URLs. Its purpose is operational verification ("does this URL actually load?"), not correctness testing of the Ruby code.
+2. **`check.js` integration specs** — 15 examples that shell out to Node and launch Chromium against a connection-refused address. Require Node and a Playwright Chromium install. Tagged `:js` and excluded from the default suite; opt-in via `RUN_JS_SPECS=true`. Should run automatically when `playwright/check.js` or its specs change.
 
-Conflating these two concerns into a single CI job would make every PR slow and add a fragile external dependency (network reachability, Chromium availability) to a suite that is otherwise hermetic.
+3. **Real browser smoke checks** — requires Node 24+, Playwright, and a Chromium binary (~300MB download). Takes 30–60s per check. Its purpose is operational verification ("does this URL actually load?"), not correctness testing of the Ruby code.
+
+Conflating these concerns into a single CI job would make every PR slow and add a fragile external dependency (network reachability, Chromium availability) to a suite that is otherwise hermetic.
 
 ## Decision
 
-Two separate workflows, with distinct triggers:
+Three separate workflows, with distinct triggers:
 
 ### `ci.yml` — automatic, on every push and PR
 
 Triggers on `push` to `main` and all `pull_request` events. Installs Ruby 4.0.1 via `ruby/setup-ruby@v1` with `bundler-cache: true`, then runs `bundle exec rspec`. No Node, no Playwright, no network calls.
 
 This is the authoritative green/red signal for code correctness. It is fast enough to not require optimisation (matrix builds, parallelism, etc.) at the current suite size.
+
+### `check-js.yml` — automatic on relevant changes, and on-demand
+
+Triggers on `push` to `main` and `pull_request` when `playwright/check.js` or `spec/playwright/**` change, and on `workflow_dispatch`. Installs Ruby, Node 24, npm dependencies, and Chromium, then runs `bundle exec rspec spec/playwright/` with `RUN_JS_SPECS=true`.
+
+Path filtering keeps this workflow dormant on the vast majority of PRs. It only activates when the Node script itself or its specs are touched.
 
 ### `playwright.yml` — manual only, via `workflow_dispatch`
 
@@ -34,7 +42,7 @@ Triggers exclusively on `workflow_dispatch` — never automatically. Accepts fou
 | `wait_until` | choice | `load` | Dropdown constrained to the four Playwright-valid values |
 | `timeout_ms` | string | `30000` | Cast to `Integer` by the Ruby script |
 
-The job installs both Ruby and Node 20, runs `npm ci` against the committed `package-lock.json`, installs Chromium with `npx playwright install chromium --with-deps` (includes OS-level dependencies on Ubuntu), then invokes a short inline Ruby script that calls `Perchfall.run` and prints the full JSON report to the Actions log.
+The job installs both Ruby and Node 24, runs `npm ci` against the committed `package-lock.json`, installs Chromium with `npx playwright install chromium --with-deps` (includes OS-level dependencies on Ubuntu), then invokes a short inline Ruby script that calls `Perchfall.run` and prints the full JSON report to the Actions log.
 
 Exit codes from the Ruby script map to distinct workflow outcomes:
 
@@ -59,6 +67,7 @@ Exit codes from the Ruby script map to distinct workflow outcomes:
 ## Consequences
 
 - PRs get a fast, reliable green/red signal with no dependency on external services or browser binaries.
+- `check.js` integration specs run automatically when the Node script or its specs change, and on demand via `workflow_dispatch`.
 - Real browser smoke checks are available on demand but produce no automatic noise.
 - The smoke workflow's exit code convention (0/1/2) is an interface contract between the workflow and any future automation that calls it via `gh workflow run`. Changes to the Ruby script's exit codes must be treated as breaking changes.
 - There is currently no artifact upload in the smoke workflow — the JSON report is only visible in the Actions log. If persistent report storage is needed, a future step could upload `report.json` as a workflow artifact or POST it to the Rails app's API.

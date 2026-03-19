@@ -24,6 +24,26 @@ module Perchfall
   class Client
     VALID_WAIT_UNTIL = %w[load domcontentloaded networkidle commit].freeze
 
+    CACHE_PROFILES = {
+      query_bust: { bust_url: true,  headers: {}.freeze }.freeze,
+      warm:       { bust_url: false, headers: {}.freeze }.freeze,
+      no_cache:   { bust_url: false, headers: { "Cache-Control" => "no-cache" }.freeze }.freeze,
+      no_store:   { bust_url: false, headers: { "Cache-Control" => "no-store, no-cache", "Pragma" => "no-cache" }.freeze }.freeze
+    }.freeze
+
+    # Headers that could carry credentials, impersonate infrastructure, or
+    # manipulate routing. Rejected in custom cache profiles to prevent
+    # accidental or malicious injection into all page-load requests.
+    FORBIDDEN_HEADERS = %w[
+      authorization
+      cookie
+      set-cookie
+      host
+      x-forwarded-for
+      x-forwarded-host
+      x-real-ip
+    ].freeze
+
     def initialize(
       invoker:   PlaywrightInvoker.new,
       validator: UrlValidator.new,
@@ -48,22 +68,26 @@ module Perchfall
     # @raise [Errors::ParseError] if the script output was not valid JSON
     # @raise [Errors::PageLoadError] if the page itself failed to load
 
-    def run(url:, ignore: [], wait_until: "load", timeout_ms: 30_000, scenario_name: nil, timestamp: Time.now.utc, bust_cache: true)
-      effective_url = bust_cache ? append_cache_buster(url) : url
-      @validator.validate!(effective_url)
+    def run(url:, ignore: [], wait_until: "load", timeout_ms: 30_000, scenario_name: nil, timestamp: Time.now.utc, cache_profile: :query_bust)
+      profile = resolve_cache_profile!(cache_profile)
       validate_wait_until!(wait_until)
       validate_timeout_ms!(timeout_ms)
+      effective_url = profile[:bust_url] ? append_cache_buster(url) : url
+      @validator.validate!(effective_url)
       merged_ignore = Perchfall::DEFAULT_IGNORE_RULES + ignore
+      invoker_opts  = {
+        url:           effective_url,
+        original_url:  url,
+        ignore:        merged_ignore,
+        wait_until:    wait_until,
+        timeout_ms:    timeout_ms,
+        scenario_name: scenario_name,
+        timestamp:     timestamp,
+        cache_profile: cache_profile
+      }
+      invoker_opts[:extra_headers] = profile[:headers] unless profile[:headers].empty?
       @limiter.acquire do
-        @invoker.run(
-          url:           effective_url,
-          original_url:  url,
-          ignore:        merged_ignore,
-          wait_until:    wait_until,
-          timeout_ms:    timeout_ms,
-          scenario_name: scenario_name,
-          timestamp:     timestamp
-        )
+        @invoker.run(**invoker_opts)
       end
     end
 
@@ -76,9 +100,32 @@ module Perchfall
             "wait_until must be one of #{VALID_WAIT_UNTIL.join(", ")}. Got: #{value.inspect}"
     end
 
+    def resolve_cache_profile!(profile)
+      if profile.is_a?(Symbol)
+        CACHE_PROFILES.fetch(profile) do
+          raise ArgumentError, "cache_profile must be one of #{CACHE_PROFILES.keys.join(", ")} or a Hash with :headers. Got: #{profile.inspect}"
+        end
+      else
+        headers = profile.fetch(:headers, {})
+        validate_custom_headers!(headers)
+        { bust_url: false, headers: headers }
+      end
+    end
+
+    def validate_custom_headers!(headers)
+      headers.each_key do |name|
+        if FORBIDDEN_HEADERS.include?(name.to_s.downcase)
+          raise ArgumentError,
+                "cache_profile contains a forbidden header: #{name.inspect}. " \
+                "Headers that carry credentials or influence routing (#{FORBIDDEN_HEADERS.join(", ")}) " \
+                "may not be set via cache_profile."
+        end
+      end
+    end
+
     def append_cache_buster(url)
       separator = url.include?("?") ? "&" : "?"
-      "#{url}#{separator}_perchfall=#{Time.now.utc.to_i}"
+      "#{url}#{separator}_pf=#{Time.now.utc.to_i}"
     end
 
     MAX_TIMEOUT_MS = 60_000

@@ -18,6 +18,7 @@ RSpec.configure do |config|
 
   config.shared_context_metadata_behavior = :apply_to_host_groups
   config.filter_run_when_matching :focus
+  config.filter_run_excluding :js unless ENV["RUN_JS_SPECS"] == "true"
   config.disable_monkey_patching!
   config.warnings = true
   config.order    = :random

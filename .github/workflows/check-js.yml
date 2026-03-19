@@ -1,0 +1,56 @@
+name: check.js specs
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "playwright/check.js"
+      - "spec/playwright/**"
+  pull_request:
+    paths:
+      - "playwright/check.js"
+      - "spec/playwright/**"
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: check.js integration specs
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "4.0.1"
+          bundler-cache: true
+
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+          cache: "npm"
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Cache Playwright browser
+        uses: actions/cache@v4
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ hashFiles('package-lock.json') }}
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+
+      - name: Install Playwright browser system deps
+        run: npx playwright install-deps chromium
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+
+      - name: Run check.js specs
+        run: bundle exec rspec spec/playwright/
+        env:
+          RUN_JS_SPECS: "true"

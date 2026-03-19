@@ -39,6 +39,16 @@ RSpec.describe Perchfall::Report do
     end
   end
 
+  describe "#cache_profile" do
+    it "defaults to nil" do
+      expect(build_report.cache_profile).to be_nil
+    end
+
+    it "stores the provided value" do
+      expect(build_report(cache_profile: :no_cache).cache_profile).to eq(:no_cache)
+    end
+  end
+
   describe "#to_h" do
     it "includes all top-level keys" do
       h = build_report.to_h
@@ -47,8 +57,17 @@ RSpec.describe Perchfall::Report do
         :http_status, :duration_ms,
         :network_errors, :ignored_network_errors,
         :console_errors, :ignored_console_errors,
-        :error
+        :error, :cache_profile
       )
+    end
+
+    it "includes cache_profile in to_h" do
+      report = build_report(cache_profile: :no_store)
+      expect(report.to_h[:cache_profile]).to eq(:no_store)
+    end
+
+    it "includes nil cache_profile when not set" do
+      expect(build_report.to_h[:cache_profile]).to be_nil
     end
 
     it "serializes ignored_network_errors as plain hashes" do
@@ -118,6 +137,13 @@ RSpec.describe Perchfall::Report do
       t = Time.utc(2026, 1, 1)
       a = build_report(timestamp: t, http_status: 200)
       b = build_report(timestamp: t, http_status: 404)
+      expect(a).not_to eq(b)
+    end
+
+    it "is not equal when cache_profile differs" do
+      t = Time.utc(2026, 1, 1)
+      a = build_report(timestamp: t, cache_profile: :warm)
+      b = build_report(timestamp: t, cache_profile: :no_cache)
       expect(a).not_to eq(b)
     end
   end
