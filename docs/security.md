@@ -12,6 +12,22 @@ Perchfall validates URLs before spawning any process:
 
 The DNS check is a best-effort mitigation, not an authoritative control. A TOCTOU race remains between Perchfall's resolution and Playwright's. **Network-level egress filtering on the host running Chromium is the required authoritative control** for SSRF prevention.
 
+## Custom request headers
+
+The `cache_profile:` option accepts a custom Hash to set arbitrary request headers. To prevent credential injection and routing manipulation, a subset of headers are always rejected:
+
+| Forbidden header | Risk if injected |
+| --- | --- |
+| `Authorization` | Attaches credentials to all requests including third-party origins |
+| `Cookie` | Same |
+| `Set-Cookie` | Could poison the browser's cookie jar |
+| `Host` | Could redirect requests to an unintended origin |
+| `X-Forwarded-For` | Could spoof source IP in server logs |
+| `X-Forwarded-Host` | Could influence host-based routing |
+| `X-Real-IP` | Could spoof source IP |
+
+Passing any of these raises `ArgumentError` before anything reaches the browser. The check is case-insensitive.
+
 ## Ignore rules
 
 Perchfall ships with one default ignore rule: `net::ERR_ABORTED` on any URL. This suppresses noise from analytics beacons and cancelled prefetch requests. Filtered errors are still captured on the report as `ignored_network_errors` and `ignored_console_errors` — nothing is silently dropped.

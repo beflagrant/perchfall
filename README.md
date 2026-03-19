@@ -128,6 +128,7 @@ Every check returns a `Perchfall::Report`:
 | `duration_ms` | Integer | Total time from navigation start to `load` event |
 | `url` | String | The URL checked |
 | `timestamp` | Time | When the check ran (UTC) |
+| `cache_profile` | Symbol / nil | Cache profile used (`:query_bust`, `:warm`, `:no_cache`, `:no_store`) |
 | `network_errors` | Array | Failed or errored network requests |
 | `console_errors` | Array | JavaScript errors logged to the browser console |
 | `to_json` | String | Full report as JSON |
@@ -155,13 +156,14 @@ Every check returns a `Perchfall::Report`:
 ```ruby
 Perchfall.run(
   url:           "https://example.com",
-  timeout_ms:    10_000,          # default 30_000, max 60_000
-  wait_until:    "domcontentloaded",  # default "load"
-  scenario_name: "homepage_smoke" # included in report JSON
+  timeout_ms:    10_000,             # default 30_000, max 60_000
+  wait_until:    "domcontentloaded", # default "load"
+  scenario_name: "homepage_smoke",   # included in report JSON
+  cache_profile: :no_cache           # default :query_bust
 )
 ```
 
-→ [All options and wait_until strategies](docs/configuration.md)
+→ [All options, cache profiles, and wait_until strategies](docs/configuration.md)
 
 ---
 
@@ -177,8 +179,9 @@ Perchfall.run(
 
 ```sh
 bundle install
-bundle exec rspec    # ~0.4s, no browser or Node required
-bin/console          # IRB with perchfall loaded
+bundle exec rspec              # ~0.5s, no browser or Node required (208 examples)
+RUN_JS_SPECS=true bundle exec rspec  # includes check.js integration specs (223 examples)
+bin/console                    # IRB with perchfall loaded
 ```
 
 ---

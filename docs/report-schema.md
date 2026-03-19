@@ -13,6 +13,7 @@ report.duration_ms     # => 834
 report.url             # => "https://example.com"
 report.scenario_name   # => "homepage_smoke" (or nil)
 report.timestamp       # => 2026-03-15 21:30:00 UTC (Time)
+report.cache_profile   # => :query_bust (or :warm, :no_cache, :no_store, nil)
 report.network_errors  # => Array<Perchfall::NetworkError>
 report.console_errors  # => Array<Perchfall::ConsoleError>
 report.to_json         # => JSON string (see below)
@@ -50,7 +51,8 @@ report.ignored_console_errors  # => Array<Perchfall::ConsoleError>
       "location": "https://example.com/assets/app.js:10:5"
     }
   ],
-  "error": null
+  "error": null,
+  "cache_profile": "query_bust"
 }
 ```
 
