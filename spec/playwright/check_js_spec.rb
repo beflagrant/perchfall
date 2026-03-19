@@ -19,7 +19,7 @@ require "timeout"
 # The entire group is skipped automatically when `node` is not on PATH.
 NODE_AVAILABLE = system("node --version > /dev/null 2>&1")
 
-RSpec.describe "playwright/check.js" do
+RSpec.describe "playwright/check.js", :js do
   before(:all) do
     skip "node not available on PATH" unless NODE_AVAILABLE
   end
