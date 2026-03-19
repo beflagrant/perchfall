@@ -9,9 +9,17 @@ puts "Perchfall #{Perchfall::VERSION} — synthetic browser monitoring"
 puts
 puts "Quick start:"
 puts "  report = Perchfall.run(url: 'https://example.com')"
-puts "  report.ok?         # => true"
-puts "  report.http_status # => 200"
-puts "  report.to_json     # => '{\"status\":\"ok\",...}'"
+puts "  report.ok?           # => true"
+puts "  report.http_status   # => 200"
+puts "  report.cache_profile # => :query_bust"
+puts "  report.to_json       # => '{\"status\":\"ok\",...}'"
+puts
+puts "Cache profiles:"
+puts "  Perchfall.run(url: '...', cache_profile: :query_bust)  # default — appends ?_pf=<ts>"
+puts "  Perchfall.run(url: '...', cache_profile: :warm)        # no mutation, no headers"
+puts "  Perchfall.run(url: '...', cache_profile: :no_cache)    # Cache-Control: no-cache"
+puts "  Perchfall.run(url: '...', cache_profile: :no_store)    # Cache-Control: no-store + Pragma"
+puts "  Perchfall.run(url: '...', cache_profile: { headers: { 'Cache-Control' => 'max-age=0' } })"
 puts
 
 IRB.start(__FILE__)
