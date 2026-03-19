@@ -7,10 +7,14 @@ require "timeout"
 
 # Integration specs for playwright/check.js.
 #
-# These tests invoke the Node script directly as a subprocess — no browser is
-# launched for most cases. All cases either fail before the browser starts
-# (argument errors) or use a URL that Chromium will reject immediately at the
-# DNS/connection stage, so they complete quickly without real network I/O.
+# These tests invoke the Node script directly as a subprocess. They fall into
+# two categories:
+#
+#   - Browser-free: argument validation and invalid --headers cases exit before
+#     Chromium is launched. Fast and deterministic.
+#   - Browser-required: valid invocations launch Chromium against a
+#     connection-refused address (https://0.0.0.0) and wait for it to fail.
+#     These use a generous Playwright timeout so they are stable on slow CI.
 #
 # The entire group is skipped automatically when `node` is not on PATH.
 NODE_AVAILABLE = system("node --version > /dev/null 2>&1")
@@ -19,9 +23,18 @@ RSpec.describe "playwright/check.js" do
   before(:all) do
     skip "node not available on PATH" unless NODE_AVAILABLE
   end
+
   SCRIPT = File.expand_path("../../playwright/check.js", __dir__)
 
-  def run_script(*args, timeout: 15)
+  # Playwright navigation timeout for browser-required tests (ms).
+  # Generous enough for a slow CI runner to boot Chromium and get a
+  # connection-refused failure before the timeout fires.
+  BROWSER_TIMEOUT_MS = "10000"
+
+  # Ruby-level process timeout — must exceed BROWSER_TIMEOUT_MS with headroom.
+  PROCESS_TIMEOUT_S  = 30
+
+  def run_script(*args, timeout: PROCESS_TIMEOUT_S)
     stdout, stderr, status = nil
     Timeout.timeout(timeout) do
       stdout, stderr, status = Open3.capture3("node", SCRIPT, *args)
@@ -54,22 +67,23 @@ RSpec.describe "playwright/check.js" do
   # -------------------------------------------------------------------------
 
   describe "--headers argument" do
+    # These two launch Chromium — use the full browser timeout.
     it "exits 0 and writes valid JSON to stdout when --headers is omitted" do
-      result = run_script("--url", "https://0.0.0.0", "--timeout", "2000")
+      result = run_script("--url", "https://0.0.0.0", "--timeout", BROWSER_TIMEOUT_MS)
       expect(result[:exit_status]).to eq(0)
       expect { JSON.parse(result[:stdout]) }.not_to raise_error
     end
 
     it "exits 0 and writes valid JSON to stdout when --headers is an empty object" do
-      result = run_script("--url", "https://0.0.0.0", "--timeout", "2000",
+      result = run_script("--url", "https://0.0.0.0", "--timeout", BROWSER_TIMEOUT_MS,
                           "--headers", "{}")
       expect(result[:exit_status]).to eq(0)
       expect { JSON.parse(result[:stdout]) }.not_to raise_error
     end
 
+    # These three are browser-free: header validation runs before Chromium starts.
     it "exits 0 and writes a JSON error result when --headers is malformed JSON" do
-      result = run_script("--url", "https://0.0.0.0", "--timeout", "2000",
-                          "--headers", "not-json")
+      result = run_script("--url", "https://0.0.0.0", "--headers", "not-json")
       expect(result[:exit_status]).to eq(0)
       parsed = JSON.parse(result[:stdout])
       expect(parsed["status"]).to eq("error")
@@ -77,16 +91,14 @@ RSpec.describe "playwright/check.js" do
     end
 
     it "exits 0 and writes a JSON error result when --headers is valid JSON but not an object" do
-      result = run_script("--url", "https://0.0.0.0", "--timeout", "2000",
-                          "--headers", '"just a string"')
+      result = run_script("--url", "https://0.0.0.0", "--headers", '"just a string"')
       expect(result[:exit_status]).to eq(0)
       parsed = JSON.parse(result[:stdout])
       expect(parsed["status"]).to eq("error")
     end
 
     it "exits 0 and writes a JSON error result when --headers contains a non-string value" do
-      result = run_script("--url", "https://0.0.0.0", "--timeout", "2000",
-                          "--headers", '{"Cache-Control": 42}')
+      result = run_script("--url", "https://0.0.0.0", "--headers", '{"Cache-Control": 42}')
       expect(result[:exit_status]).to eq(0)
       parsed = JSON.parse(result[:stdout])
       expect(parsed["status"]).to eq("error")
@@ -99,7 +111,7 @@ RSpec.describe "playwright/check.js" do
 
   describe "JSON output shape" do
     subject(:parsed) do
-      result = run_script("--url", "https://0.0.0.0", "--timeout", "2000")
+      result = run_script("--url", "https://0.0.0.0", "--timeout", BROWSER_TIMEOUT_MS)
       JSON.parse(result[:stdout])
     end
 
@@ -128,7 +140,7 @@ RSpec.describe "playwright/check.js" do
     end
 
     it "exits 0 even when the page fails to load" do
-      result = run_script("--url", "https://0.0.0.0", "--timeout", "2000")
+      result = run_script("--url", "https://0.0.0.0", "--timeout", BROWSER_TIMEOUT_MS)
       expect(result[:exit_status]).to eq(0)
     end
 
