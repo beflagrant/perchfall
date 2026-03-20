@@ -11,7 +11,7 @@
 
 "use strict";
 
-const { chromium } = require("playwright");
+const { chromium } = require(require.resolve("playwright", { paths: [__dirname] }));
 const { parseArgs } = require("node:util");
 
 // ---------------------------------------------------------------------------

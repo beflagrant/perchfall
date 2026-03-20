@@ -35,6 +35,14 @@ Gem::Specification.new do |spec|
 
   spec.require_paths = ['lib']
 
+  spec.post_install_message = <<~MSG
+    perchfall requires Node.js and Playwright to run browser checks.
+    After installing this gem, run:
+
+      npm install playwright
+      npx playwright install chromium
+  MSG
+
   # json is in stdlib but declared explicitly so bundler resolves it correctly
   spec.add_dependency 'json', '>= 2.0'
 
