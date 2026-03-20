@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-03-19
+
+### Added
+
+- `Perchfall.run!` — like `.run` but raises `PageLoadError` when the report is not ok. Use in scripts or jobs that should abort on any page failure.
+
+### Changed
+
+- `Perchfall.run` now always returns a `Report`, even when the page has unignored errors. Callers check `report.ok?` and handle failures themselves. This makes notification workflows possible without rescuing exceptions.
+
 ## [0.3.1] - 2026-03-19
 
 ### Changed
@@ -64,7 +74,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Full dependency injection throughout — test suite runs in ~0.4 s with no browser, Node, or network required
 - GitHub Actions CI workflow (unit suite) and manual Playwright smoke check workflow
 
-[Unreleased]: https://github.com/beflagrant/perchfall/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/beflagrant/perchfall/compare/v0.3.2...HEAD
+[0.3.2]: https://github.com/beflagrant/perchfall/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/beflagrant/perchfall/compare/v0.2.0...v0.3.1
 [0.2.0]: https://github.com/beflagrant/perchfall/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/beflagrant/perchfall/releases/tag/v0.1.0
