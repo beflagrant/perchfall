@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-03-19
+
+### Changed
+
+- `Report#ok?` now returns `false` when there are unignored network or console errors, even if the page reached the load milestone (`status == "ok"`). Previously, `ok?` only checked `status`.
+- `PlaywrightInvoker#raise_if_page_load_error` now raises `PageLoadError` for reports with unignored errors. The `PageLoadError` carries the full report so callers can inspect which errors triggered the failure.
+- Errors moved to `ignored_network_errors` / `ignored_console_errors` by an `IgnoreRule` continue to be excluded from `ok?` — they have been explicitly acknowledged by the caller.
+
 ## [0.2.0] - 2026-03-19
 
 ### Added
@@ -56,6 +64,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Full dependency injection throughout — test suite runs in ~0.4 s with no browser, Node, or network required
 - GitHub Actions CI workflow (unit suite) and manual Playwright smoke check workflow
 
-[Unreleased]: https://github.com/beflagrant/perchfall/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/beflagrant/perchfall/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/beflagrant/perchfall/compare/v0.2.0...v0.3.1
 [0.2.0]: https://github.com/beflagrant/perchfall/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/beflagrant/perchfall/releases/tag/v0.1.0
