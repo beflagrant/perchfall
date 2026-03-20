@@ -53,7 +53,7 @@ module Perchfall
     end
 
     def ok?
-      status == "ok"
+      status == "ok" && network_errors.empty? && console_errors.empty?
     end
 
     def to_h

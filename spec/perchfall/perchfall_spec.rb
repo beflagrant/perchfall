@@ -44,11 +44,16 @@ RSpec.describe Perchfall do
         ))
       end
 
-      it "report is still ok (sub-resource errors don't fail the check)" do
-        report = Perchfall.run(url: "https://example.com")
-        expect(report).to be_ok
-        expect(report.network_errors.length).to eq(1)
-        expect(report.network_errors.first.failure).to eq("HTTP 404")
+      it "raises PageLoadError because unignored network errors are failures" do
+        expect { Perchfall.run(url: "https://example.com") }
+          .to raise_error(Perchfall::Errors::PageLoadError)
+      end
+
+      it "exposes the network errors on the report carried by PageLoadError" do
+        Perchfall.run(url: "https://example.com")
+      rescue Perchfall::Errors::PageLoadError => e
+        expect(e.report.network_errors.length).to eq(1)
+        expect(e.report.network_errors.first.failure).to eq("HTTP 404")
       end
     end
 

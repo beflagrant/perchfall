@@ -30,12 +30,27 @@ RSpec.describe Perchfall::Report do
   end
 
   describe "#ok?" do
-    it "returns true when status is 'ok'" do
+    it "returns true when status is 'ok' and there are no errors" do
       expect(build_report(status: "ok")).to be_ok
     end
 
     it "returns false when status is 'error'" do
       expect(build_report(status: "error", error: "timeout")).not_to be_ok
+    end
+
+    it "returns false when there are network errors" do
+      ne = Perchfall::NetworkError.new(url: "https://cdn.example.com/x.js", http_method: "GET", failure: "HTTP 404")
+      expect(build_report(network_errors: [ne])).not_to be_ok
+    end
+
+    it "returns false when there are console errors" do
+      ce = Perchfall::ConsoleError.new(type: "error", text: "Uncaught TypeError", location: "app.js:1:1")
+      expect(build_report(console_errors: [ce])).not_to be_ok
+    end
+
+    it "returns true when errors are present but all ignored" do
+      ne = Perchfall::NetworkError.new(url: "https://cdn.example.com/x.js", http_method: "GET", failure: "HTTP 404")
+      expect(build_report(network_errors: [], ignored_network_errors: [ne])).to be_ok
     end
   end
 
