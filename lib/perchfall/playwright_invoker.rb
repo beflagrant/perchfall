@@ -27,9 +27,7 @@ module Perchfall
     def run(url:, timestamp:, timeout_ms: 30_000, wait_until: "load", scenario_name: nil, ignore: [], original_url: nil, extra_headers: {}, cache_profile: nil)
       parser = build_parser(ignore)
       result = execute(build_command(url: url, timeout_ms: timeout_ms, wait_until: wait_until, extra_headers: extra_headers))
-      report = parse(result, parser: parser, scenario_name: scenario_name, timestamp: timestamp, original_url: original_url || url, cache_profile: cache_profile)
-      raise_if_page_load_error(report)
-      report
+      parse(result, parser: parser, scenario_name: scenario_name, timestamp: timestamp, original_url: original_url || url, cache_profile: cache_profile)
     end
 
     private
@@ -62,8 +60,5 @@ module Perchfall
       parser.parse(result.stdout, **opts)
     end
 
-    def raise_if_page_load_error(report)
-      raise Errors::PageLoadError.new(report) unless report.ok?
-    end
   end
 end

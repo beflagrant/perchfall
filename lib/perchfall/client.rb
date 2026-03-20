@@ -55,20 +55,36 @@ module Perchfall
     end
 
     # Run a synthetic browser check against the given URL.
+    # Always returns a Report — callers must check report.ok? to determine success.
     #
     # @param url [String] the URL to check (required, must be http or https)
     # @param timeout_ms [Integer] ms before Playwright gives up (default 30_000)
     # @param scenario_name [String, nil] optional label included in the report
     # @param timestamp [Time] override the run timestamp (default Time.now.utc)
-    # @return [Report] on success
+    # @return [Report]
     # @raise [ArgumentError] if the URL is not http/https
     # @raise [Errors::ConcurrencyLimitError] if the concurrency cap is reached
     # @raise [Errors::InvocationError] if Node could not be started
     # @raise [Errors::ScriptError] if the Node script exited non-zero
     # @raise [Errors::ParseError] if the script output was not valid JSON
-    # @raise [Errors::PageLoadError] if the page itself failed to load
+    def run(url:, **opts)
+      invoke(url: url, **opts)
+    end
 
-    def run(url:, ignore: [], wait_until: "load", timeout_ms: 30_000, scenario_name: nil, timestamp: Time.now.utc, cache_profile: :query_bust)
+    # Like #run, but raises PageLoadError if the report is not ok.
+    # Use this in scripts or jobs that should abort on any page failure.
+    #
+    # @return [Report] only if report.ok?
+    # @raise [Errors::PageLoadError] if the page failed to load or has unignored errors
+    def run!(url:, **opts)
+      report = invoke(url: url, **opts)
+      raise Errors::PageLoadError.new(report) unless report.ok?
+      report
+    end
+
+    private
+
+    def invoke(url:, ignore: [], wait_until: "load", timeout_ms: 30_000, scenario_name: nil, timestamp: Time.now.utc, cache_profile: :query_bust)
       profile = resolve_cache_profile!(cache_profile)
       validate_wait_until!(wait_until)
       validate_timeout_ms!(timeout_ms)

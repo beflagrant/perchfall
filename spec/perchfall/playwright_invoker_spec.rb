@@ -127,16 +127,19 @@ RSpec.describe Perchfall::PlaywrightInvoker do
     context "when the page fails to load (status: error in JSON)" do
       subject(:invoker) { invoker_with(stdout: error_json) }
 
-      it "raises PageLoadError" do
-        expect { invoker.run(url: "https://example.com", timestamp: fixed_time) }
-          .to raise_error(Perchfall::Errors::PageLoadError)
+      it "returns a Report with status 'error'" do
+        report = invoker.run(url: "https://example.com", timestamp: fixed_time)
+        expect(report.status).to eq("error")
       end
 
-      it "carries the partial Report on the exception" do
-        invoker.run(url: "https://example.com", timestamp: fixed_time)
-      rescue Perchfall::Errors::PageLoadError => e
-        expect(e.report).to be_a(Perchfall::Report)
-        expect(e.report.error).to eq("net::ERR_NAME_NOT_RESOLVED")
+      it "report carries the error message" do
+        report = invoker.run(url: "https://example.com", timestamp: fixed_time)
+        expect(report.error).to eq("net::ERR_NAME_NOT_RESOLVED")
+      end
+
+      it "report is not ok" do
+        report = invoker.run(url: "https://example.com", timestamp: fixed_time)
+        expect(report).not_to be_ok
       end
     end
 

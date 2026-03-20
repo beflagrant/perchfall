@@ -43,14 +43,24 @@ module Perchfall
     @default_limiter ||= ConcurrencyLimiter.new(limit: 5)
   end
 
-  # Convenience method. Equivalent to Perchfall::Client.new.run(url:, **opts).
-  # Creates a fresh Client (and thus a fresh PlaywrightInvoker) on each call —
-  # no shared state between invocations.
+  # Returns a Report always — callers check report.ok? to determine success.
+  # Use this when you want to handle or notify on failures yourself.
   #
   # @param url [String]
   # @param opts [Hash] forwarded to Client#run
   # @return [Report]
   def self.run(url:, **opts)
     Client.new.run(url: url, **opts)
+  end
+
+  # Like .run, but raises PageLoadError if the report is not ok.
+  # Use this in scripts or jobs that should abort on any page failure.
+  #
+  # @param url [String]
+  # @param opts [Hash] forwarded to Client#run!
+  # @return [Report] only if report.ok?
+  # @raise [Errors::PageLoadError]
+  def self.run!(url:, **opts)
+    Client.new.run!(url: url, **opts)
   end
 end

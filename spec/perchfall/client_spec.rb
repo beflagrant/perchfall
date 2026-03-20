@@ -315,4 +315,44 @@ RSpec.describe Perchfall::Client do
     expect { described_class.new(invoker: raising_invoker, limiter: limiter).run(url: "https://example.com") }
       .to raise_error(Perchfall::Errors::InvocationError, "node not found")
   end
+
+  describe "#run!" do
+    it "returns the report when ok" do
+      report = client.run!(url: "https://example.com")
+      expect(report).to be_a(Perchfall::Report)
+      expect(report).to be_ok
+    end
+
+    it "raises PageLoadError when the report is not ok" do
+      not_ok_invoker = Class.new do
+        def run(url:, **)
+          Perchfall::Report.new(
+            status: "error", url: url, duration_ms: 0,
+            http_status: nil, network_errors: [], console_errors: [],
+            error: "net::ERR_NAME_NOT_RESOLVED"
+          )
+        end
+      end.new
+
+      expect {
+        described_class.new(invoker: not_ok_invoker, limiter: limiter).run!(url: "https://example.com")
+      }.to raise_error(Perchfall::Errors::PageLoadError)
+    end
+
+    it "carries the report on the PageLoadError" do
+      not_ok_invoker = Class.new do
+        def run(url:, **)
+          Perchfall::Report.new(
+            status: "error", url: url, duration_ms: 0,
+            http_status: nil, network_errors: [], console_errors: [],
+            error: "net::ERR_NAME_NOT_RESOLVED"
+          )
+        end
+      end.new
+
+      described_class.new(invoker: not_ok_invoker, limiter: limiter).run!(url: "https://example.com")
+    rescue Perchfall::Errors::PageLoadError => e
+      expect(e.report.error).to eq("net::ERR_NAME_NOT_RESOLVED")
+    end
+  end
 end

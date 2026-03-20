@@ -8,22 +8,21 @@ require "spec_helper"
 RSpec.describe Perchfall do
   include PlaywrightJsonFixture
 
+  let(:fixed_time) { Time.utc(2026, 3, 15, 21, 30, 0) }
+
+  def stub_runner_with(json)
+    runner  = FakeCommandRunner.new(stdout: json)
+    invoker = Perchfall::PlaywrightInvoker.new(runner: runner)
+    allow(Perchfall::Client).to receive(:new)
+      .and_return(Perchfall::Client.new(invoker: invoker))
+  end
+
   describe ".run" do
-    let(:fixed_time) { Time.utc(2026, 3, 15, 21, 30, 0) }
-
-    def stub_runner_with(json)
-      runner  = FakeCommandRunner.new(stdout: json)
-      invoker = Perchfall::PlaywrightInvoker.new(runner: runner)
-      allow(Perchfall::Client).to receive(:new)
-        .and_return(Perchfall::Client.new(invoker: invoker))
-    end
-
     context "successful check" do
       before { stub_runner_with(ok_json(http_status: 200, duration_ms: 742)) }
 
       it "returns a Report" do
-        report = Perchfall.run(url: "https://example.com")
-        expect(report).to be_a(Perchfall::Report)
+        expect(Perchfall.run(url: "https://example.com")).to be_a(Perchfall::Report)
       end
 
       it "report is ok" do
@@ -44,32 +43,36 @@ RSpec.describe Perchfall do
         ))
       end
 
-      it "raises PageLoadError because unignored network errors are failures" do
-        expect { Perchfall.run(url: "https://example.com") }
-          .to raise_error(Perchfall::Errors::PageLoadError)
+      it "returns a Report" do
+        expect(Perchfall.run(url: "https://example.com")).to be_a(Perchfall::Report)
       end
 
-      it "exposes the network errors on the report carried by PageLoadError" do
-        Perchfall.run(url: "https://example.com")
-      rescue Perchfall::Errors::PageLoadError => e
-        expect(e.report.network_errors.length).to eq(1)
-        expect(e.report.network_errors.first.failure).to eq("HTTP 404")
+      it "report is not ok" do
+        expect(Perchfall.run(url: "https://example.com")).not_to be_ok
+      end
+
+      it "report exposes the network errors" do
+        report = Perchfall.run(url: "https://example.com")
+        expect(report.network_errors.length).to eq(1)
+        expect(report.network_errors.first.failure).to eq("HTTP 404")
       end
     end
 
     context "page load failure" do
       before { stub_runner_with(error_json) }
 
-      it "raises PageLoadError" do
-        expect { Perchfall.run(url: "https://example.com") }
-          .to raise_error(Perchfall::Errors::PageLoadError)
+      it "returns a Report" do
+        expect(Perchfall.run(url: "https://example.com")).to be_a(Perchfall::Report)
       end
 
-      it "PageLoadError carries a partial Report" do
-        Perchfall.run(url: "https://example.com")
-      rescue Perchfall::Errors::PageLoadError => e
-        expect(e.report.url).to eq("https://example.com")
-        expect(e.report.error).to eq("net::ERR_NAME_NOT_RESOLVED")
+      it "report is not ok" do
+        expect(Perchfall.run(url: "https://example.com")).not_to be_ok
+      end
+
+      it "report carries the error" do
+        report = Perchfall.run(url: "https://example.com")
+        expect(report.url).to eq("https://example.com")
+        expect(report.error).to eq("net::ERR_NAME_NOT_RESOLVED")
       end
     end
 
@@ -84,6 +87,56 @@ RSpec.describe Perchfall do
       it "raises ScriptError" do
         expect { Perchfall.run(url: "https://example.com") }
           .to raise_error(Perchfall::Errors::ScriptError)
+      end
+    end
+  end
+
+  describe ".run!" do
+    context "successful check" do
+      before { stub_runner_with(ok_json(http_status: 200, duration_ms: 742)) }
+
+      it "returns a Report" do
+        expect(Perchfall.run!(url: "https://example.com")).to be_a(Perchfall::Report)
+      end
+
+      it "report is ok" do
+        expect(Perchfall.run!(url: "https://example.com")).to be_ok
+      end
+    end
+
+    context "check with network errors" do
+      before do
+        stub_runner_with(ok_json(
+          network_errors: [{ url: "https://example.com/missing.js", method: "GET", failure: "HTTP 404" }]
+        ))
+      end
+
+      it "raises PageLoadError" do
+        expect { Perchfall.run!(url: "https://example.com") }
+          .to raise_error(Perchfall::Errors::PageLoadError)
+      end
+
+      it "PageLoadError carries the report with network errors" do
+        Perchfall.run!(url: "https://example.com")
+      rescue Perchfall::Errors::PageLoadError => e
+        expect(e.report.network_errors.length).to eq(1)
+        expect(e.report.network_errors.first.failure).to eq("HTTP 404")
+      end
+    end
+
+    context "page load failure" do
+      before { stub_runner_with(error_json) }
+
+      it "raises PageLoadError" do
+        expect { Perchfall.run!(url: "https://example.com") }
+          .to raise_error(Perchfall::Errors::PageLoadError)
+      end
+
+      it "PageLoadError carries the report" do
+        Perchfall.run!(url: "https://example.com")
+      rescue Perchfall::Errors::PageLoadError => e
+        expect(e.report.url).to eq("https://example.com")
+        expect(e.report.error).to eq("net::ERR_NAME_NOT_RESOLVED")
       end
     end
   end
