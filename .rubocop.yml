@@ -1,0 +1,22 @@
+AllCops:
+  NewCops: enable
+
+# client.rb carries the full public option set for runs. RunOptions.from_kwargs
+# intentionally mirrors every run option, so parameter and length limits are
+# legitimately exceeded there. build_invoker_opts assembles a hash that maps
+# one-to-one with the invoker's keyword signature — splitting it further would
+# obscure rather than clarify.
+Metrics/ParameterLists:
+  Max: 5
+  Exclude:
+    - 'lib/perchfall/client.rb'
+
+Metrics/MethodLength:
+  Max: 10
+  Exclude:
+    - 'lib/perchfall/client.rb'
+
+Metrics/ClassLength:
+  Max: 100
+  Exclude:
+    - 'lib/perchfall/client.rb'
