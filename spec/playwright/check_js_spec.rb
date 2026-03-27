@@ -147,5 +147,26 @@ RSpec.describe "playwright/check.js", :js do
     it "sets status to 'error' when the page fails to load" do
       expect(parsed["status"]).to eq("error")
     end
+
+    it "does not include a resources key when --capture-resources is omitted" do
+      expect(parsed).not_to have_key("resources")
+    end
+  end
+
+  describe "--capture-resources flag" do
+    subject(:parsed) do
+      result = run_script("--url", "https://0.0.0.0", "--timeout", BROWSER_TIMEOUT_MS, "--capture-resources")
+      JSON.parse(result[:stdout])
+    end
+
+    it "includes resources as an array when --capture-resources is passed" do
+      expect(parsed["resources"]).to be_an(Array)
+    end
+
+    it "each resource entry has the expected keys" do
+      parsed["resources"].each do |r|
+        expect(r.keys).to include("url", "method", "status", "content_type", "transfer_size", "resource_type")
+      end
+    end
   end
 end

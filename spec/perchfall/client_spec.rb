@@ -205,6 +205,28 @@ RSpec.describe Perchfall::Client do
     end
   end
 
+  describe "capture_resources" do
+    it "defaults to false and does not forward capture_resources to the invoker" do
+      client.run(url: "https://example.com")
+      expect(recording_invoker.last_opts).not_to have_key(:capture_resources)
+    end
+
+    it "forwards capture_resources: true to the invoker" do
+      client.run(url: "https://example.com", capture_resources: true)
+      expect(recording_invoker.last_opts[:capture_resources]).to eq(true)
+    end
+
+    it "forwards large_resource_threshold_bytes to the invoker when capture_resources is true" do
+      client.run(url: "https://example.com", capture_resources: true, large_resource_threshold_bytes: 100_000)
+      expect(recording_invoker.last_opts[:large_resource_threshold_bytes]).to eq(100_000)
+    end
+
+    it "does not forward large_resource_threshold_bytes when capture_resources is false" do
+      client.run(url: "https://example.com", large_resource_threshold_bytes: 100_000)
+      expect(recording_invoker.last_opts).not_to have_key(:large_resource_threshold_bytes)
+    end
+  end
+
   it "rejects unknown keyword arguments" do
     expect { client.run(url: "https://example.com", timoeut_ms: 5_000) }
       .to raise_error(ArgumentError, /timoeut_ms/)

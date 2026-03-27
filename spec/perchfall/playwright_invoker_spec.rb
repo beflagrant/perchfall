@@ -101,6 +101,20 @@ RSpec.describe Perchfall::PlaywrightInvoker do
         invoker.run(url: "https://example.com", timestamp: fixed_time)
         expect(runner.last_command).not_to include("--headers")
       end
+
+      it "appends --capture-resources when capture_resources is true" do
+        runner = FakeCommandRunner.new(stdout: ok_json)
+        invoker = described_class.new(runner: runner)
+        invoker.run(url: "https://example.com", timestamp: fixed_time, capture_resources: true)
+        expect(runner.last_command).to include("--capture-resources")
+      end
+
+      it "omits --capture-resources when capture_resources is false (default)" do
+        runner = FakeCommandRunner.new(stdout: ok_json)
+        invoker = described_class.new(runner: runner)
+        invoker.run(url: "https://example.com", timestamp: fixed_time)
+        expect(runner.last_command).not_to include("--capture-resources")
+      end
     end
 
     context "when the script exits non-zero" do

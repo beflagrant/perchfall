@@ -18,10 +18,13 @@ module Perchfall
   #   ignored_console_errors - Array<ConsoleError>: errors suppressed by ignore rules
   #   error                  - String or nil: set only when status == "error"
   #   cache_profile          - Symbol or nil: the cache profile used for this run
+  #   resources              - Array<Resource>: resources that exceeded the configured size
+  #                            threshold; only populated when capture_resources: true was passed
   class Report
     attr_reader :status, :url, :scenario_name, :timestamp, :duration_ms,
                 :http_status, :network_errors, :ignored_network_errors,
-                :console_errors, :ignored_console_errors, :error, :cache_profile
+                :console_errors, :ignored_console_errors, :error, :cache_profile,
+                :resources
 
     def initialize(
       status:,
@@ -35,7 +38,8 @@ module Perchfall
       ignored_console_errors: [],
       scenario_name: nil,
       timestamp: Time.now.utc,
-      cache_profile: nil
+      cache_profile: nil,
+      resources: []
     )
       @status                 = status.freeze
       @url                    = url.freeze
@@ -49,6 +53,7 @@ module Perchfall
       @ignored_console_errors = ignored_console_errors.freeze
       @error                  = error&.freeze
       @cache_profile          = cache_profile
+      @resources              = resources.freeze
       freeze
     end
 
@@ -70,7 +75,8 @@ module Perchfall
         console_errors:         console_errors.map(&:to_h),
         ignored_console_errors: ignored_console_errors.map(&:to_h),
         error:          error,
-        cache_profile:  cache_profile
+        cache_profile:  cache_profile,
+        resources:      resources.map(&:to_h)
       }
     end
 

@@ -132,6 +132,70 @@ RSpec.describe Perchfall::Parsers::PlaywrightJsonParser do
       end
     end
 
+    context "with resources in the payload" do
+      context "when capture_resources is false (default)" do
+        it "returns an empty resources array regardless of payload content" do
+          json   = ok_json(resources: [resource_entry])
+          report = parser.parse(json, timestamp: fixed_time)
+          expect(report.resources).to be_empty
+        end
+      end
+
+      context "when capture_resources is true" do
+        it "returns resources above the threshold" do
+          big = resource_entry(transfer_size: 300_000)
+          json = ok_json(resources: [big])
+          report = parser.parse(json, timestamp: fixed_time, capture_resources: true, large_resource_threshold_bytes: 200_000)
+          expect(report.resources.length).to eq(1)
+          expect(report.resources.first).to be_a(Perchfall::Resource)
+        end
+
+        it "excludes resources below the threshold" do
+          small = resource_entry(transfer_size: 10_000)
+          json  = ok_json(resources: [small])
+          report = parser.parse(json, timestamp: fixed_time, capture_resources: true, large_resource_threshold_bytes: 200_000)
+          expect(report.resources).to be_empty
+        end
+
+        it "includes resources with nil transfer_size (unknown, cannot prove small)" do
+          unknown = resource_entry(transfer_size: nil)
+          json = ok_json(resources: [unknown])
+          report = parser.parse(json, timestamp: fixed_time, capture_resources: true, large_resource_threshold_bytes: 200_000)
+          expect(report.resources.length).to eq(1)
+          expect(report.resources.first.transfer_size).to be_nil
+        end
+
+        it "maps all Resource fields correctly" do
+          entry = resource_entry(
+            url: "https://example.com/bg.png", method: "GET", status: 200,
+            content_type: "image/png", transfer_size: 500_000, resource_type: "image"
+          )
+          report = parser.parse(ok_json(resources: [entry]), timestamp: fixed_time,
+                                capture_resources: true, large_resource_threshold_bytes: 200_000)
+          r = report.resources.first
+          expect(r.url).to eq("https://example.com/bg.png")
+          expect(r.http_method).to eq("GET")
+          expect(r.status).to eq(200)
+          expect(r.content_type).to eq("image/png")
+          expect(r.transfer_size).to eq(500_000)
+          expect(r.resource_type).to eq("image")
+        end
+
+        it "returns empty array when resources key is absent (backwards compat)" do
+          report = parser.parse(ok_json, timestamp: fixed_time, capture_resources: true, large_resource_threshold_bytes: 200_000)
+          expect(report.resources).to be_empty
+        end
+
+        it "uses the default threshold of 200_000 bytes when not specified" do
+          above = resource_entry(transfer_size: 200_001)
+          below = resource_entry(url: "https://example.com/small.png", transfer_size: 199_999)
+          json  = ok_json(resources: [above, below])
+          report = parser.parse(json, timestamp: fixed_time, capture_resources: true)
+          expect(report.resources.map(&:transfer_size)).to eq([200_001])
+        end
+      end
+    end
+
     context "with a valid error payload" do
       it "returns a non-ok report" do
         report = parser.parse(error_json, timestamp: fixed_time)

@@ -72,7 +72,7 @@ RSpec.describe Perchfall::Report do
         :http_status, :duration_ms,
         :network_errors, :ignored_network_errors,
         :console_errors, :ignored_console_errors,
-        :error, :cache_profile
+        :error, :cache_profile, :resources
       )
     end
 
@@ -137,6 +137,30 @@ RSpec.describe Perchfall::Report do
       expect(parsed["url"]).to eq("https://example.com")
       expect(parsed["ok"]).to eq(true)
       expect(parsed["network_errors"]).to eq([])
+    end
+  end
+
+  describe "#resources" do
+    it "defaults to an empty array" do
+      expect(build_report.resources).to eq([])
+    end
+
+    it "stores provided resources" do
+      r = Perchfall::Resource.new(url: "https://example.com/hero.jpg", http_method: "GET",
+                                  status: 200, content_type: "image/jpeg",
+                                  transfer_size: 204_800, resource_type: "image")
+      expect(build_report(resources: [r]).resources).to eq([r])
+    end
+
+    it "is frozen" do
+      expect(build_report.resources).to be_frozen
+    end
+
+    it "is not affected by ok?" do
+      r = Perchfall::Resource.new(url: "https://example.com/hero.jpg", http_method: "GET",
+                                  status: 200, content_type: "image/jpeg",
+                                  transfer_size: 5_000_000, resource_type: "image")
+      expect(build_report(resources: [r])).to be_ok
     end
   end
 

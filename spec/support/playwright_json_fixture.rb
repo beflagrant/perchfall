@@ -38,4 +38,15 @@ module PlaywrightJsonFixture
     { type: "error", text: "Uncaught ReferenceError: foo is not defined", location: "https://example.com/app.js:10:5" }
       .merge(overrides)
   end
+
+  def resource_entry(overrides = {})
+    {
+      url:           "https://example.com/hero.jpg",
+      method:        "GET",
+      status:        200,
+      content_type:  "image/jpeg",
+      transfer_size: 204_800,
+      resource_type: "image"
+    }.merge(overrides)
+  end
 end

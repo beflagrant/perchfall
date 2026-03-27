@@ -82,29 +82,49 @@ module Perchfall
       report
     end
 
+    DEFAULT_RESOURCE_THRESHOLD = Parsers::PlaywrightJsonParser::DEFAULT_LARGE_RESOURCE_THRESHOLD_BYTES
+
+    RunOptions = Data.define(
+      :url, :ignore, :wait_until, :timeout_ms, :scenario_name,
+      :timestamp, :cache_profile, :capture_resources, :large_resource_threshold_bytes
+    ) do
+      def self.from_kwargs(url:, ignore: [], wait_until: 'load', timeout_ms: 30_000,
+                           scenario_name: nil, timestamp: Time.now.utc,
+                           cache_profile: :query_bust, capture_resources: false,
+                           large_resource_threshold_bytes: DEFAULT_RESOURCE_THRESHOLD)
+        new(url: url, ignore: ignore, wait_until: wait_until, timeout_ms: timeout_ms,
+            scenario_name: scenario_name, timestamp: timestamp, cache_profile: cache_profile,
+            capture_resources: capture_resources,
+            large_resource_threshold_bytes: large_resource_threshold_bytes)
+      end
+    end
+
     private
 
-    def invoke(url:, ignore: [], wait_until: "load", timeout_ms: 30_000, scenario_name: nil, timestamp: Time.now.utc, cache_profile: :query_bust)
-      profile = resolve_cache_profile!(cache_profile)
-      validate_wait_until!(wait_until)
-      validate_timeout_ms!(timeout_ms)
-      effective_url = profile[:bust_url] ? append_cache_buster(url) : url
+    def invoke(url:, **kwargs)
+      opts    = RunOptions.from_kwargs(url: url, **kwargs)
+      profile = resolve_cache_profile!(opts.cache_profile)
+      validate_wait_until!(opts.wait_until)
+      validate_timeout_ms!(opts.timeout_ms)
+      effective_url = profile[:bust_url] ? append_cache_buster(opts.url) : opts.url
       @validator.validate!(effective_url)
-      merged_ignore = Perchfall::DEFAULT_IGNORE_RULES + ignore
-      invoker_opts  = {
-        url:           effective_url,
-        original_url:  url,
-        ignore:        merged_ignore,
-        wait_until:    wait_until,
-        timeout_ms:    timeout_ms,
-        scenario_name: scenario_name,
-        timestamp:     timestamp,
-        cache_profile: cache_profile
+      @limiter.acquire { @invoker.run(**build_invoker_opts(opts, effective_url, profile)) }
+    end
+
+    def build_invoker_opts(opts, effective_url, profile)
+      result = {
+        url: effective_url, original_url: opts.url,
+        ignore: Perchfall::DEFAULT_IGNORE_RULES + opts.ignore,
+        wait_until: opts.wait_until, timeout_ms: opts.timeout_ms,
+        scenario_name: opts.scenario_name, timestamp: opts.timestamp,
+        cache_profile: opts.cache_profile
       }
-      invoker_opts[:extra_headers] = profile[:headers] unless profile[:headers].empty?
-      @limiter.acquire do
-        @invoker.run(**invoker_opts)
+      result[:extra_headers] = profile[:headers] unless profile[:headers].empty?
+      if opts.capture_resources
+        result[:capture_resources]              = true
+        result[:large_resource_threshold_bytes] = opts.large_resource_threshold_bytes
       end
+      result
     end
 
     private

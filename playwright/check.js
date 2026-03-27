@@ -20,10 +20,11 @@ const { parseArgs } = require("node:util");
 
 const { values: args } = parseArgs({
   options: {
-    url:        { type: "string" },
-    timeout:    { type: "string", default: "30000" },
-    "wait-until": { type: "string", default: "load" },
-    headers:    { type: "string", default: "{}" },
+    url:                { type: "string" },
+    timeout:            { type: "string", default: "30000" },
+    "wait-until":       { type: "string", default: "load" },
+    headers:            { type: "string", default: "{}" },
+    "capture-resources": { type: "boolean", default: false },
   },
   strict: true,
 });
@@ -33,9 +34,10 @@ if (!args.url) {
   process.exit(1);
 }
 
-const TARGET_URL = args.url;
-const TIMEOUT_MS = parseInt(args.timeout, 10);
-const WAIT_UNTIL = args["wait-until"];
+const TARGET_URL       = args.url;
+const TIMEOUT_MS       = parseInt(args.timeout, 10);
+const WAIT_UNTIL       = args["wait-until"];
+const CAPTURE_RESOURCES = args["capture-resources"];
 
 let EXTRA_HEADERS;
 try {
@@ -66,8 +68,8 @@ try {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function buildResult({ status, durationMs, httpStatus, networkErrors, consoleErrors, error }) {
-  return JSON.stringify({
+function buildResult({ status, durationMs, httpStatus, networkErrors, consoleErrors, resources, error }) {
+  const result = {
     status,
     url:            TARGET_URL,
     duration_ms:    durationMs,
@@ -75,7 +77,25 @@ function buildResult({ status, durationMs, httpStatus, networkErrors, consoleErr
     network_errors: networkErrors,
     console_errors: consoleErrors,
     error:          error ?? null,
-  });
+  };
+  if (resources !== undefined) result.resources = resources;
+  return JSON.stringify(result);
+}
+
+async function resolveResources(pending) {
+  if (pending === null) return undefined;
+  return Promise.all(pending.map(async (res) => {
+    const headers   = await res.allHeaders();
+    const rawLength = headers["content-length"];
+    return {
+      url:           res.url(),
+      method:        res.request().method(),
+      status:        res.status(),
+      content_type:  headers["content-type"] ?? null,
+      transfer_size: rawLength != null ? parseInt(rawLength, 10) : null,
+      resource_type: res.request().resourceType(),
+    };
+  }));
 }
 
 // ---------------------------------------------------------------------------
@@ -86,6 +106,7 @@ async function run() {
   const startedAt      = Date.now();
   const networkErrors  = [];
   const consoleErrors  = [];
+  const pendingResources = CAPTURE_RESOURCES ? [] : null;
   let   browser;
 
   try {
@@ -106,6 +127,7 @@ async function run() {
     });
 
     // Collect non-2xx/3xx responses as network errors too.
+    // When resource capture is enabled, stash every response for later processing.
     page.on("response", (response) => {
       const status = response.status();
       if (status >= 400) {
@@ -114,6 +136,9 @@ async function run() {
           method:  response.request().method(),
           failure: `HTTP ${status}`,
         });
+      }
+      if (pendingResources !== null) {
+        pendingResources.push(response);
       }
     });
 
@@ -135,6 +160,7 @@ async function run() {
     });
 
     const durationMs = Date.now() - startedAt;
+    const resources  = await resolveResources(pendingResources);
 
     process.stdout.write(buildResult({
       status:        "ok",
@@ -142,6 +168,7 @@ async function run() {
       httpStatus:    response ? response.status() : null,
       networkErrors,
       consoleErrors,
+      resources,
       error:         null,
     }));
 
@@ -150,6 +177,7 @@ async function run() {
   } catch (err) {
     // Page-level failure (timeout, DNS, etc.) — exit 0 so Ruby reads the JSON.
     const durationMs = Date.now() - startedAt;
+    const resources  = await resolveResources(pendingResources);
 
     process.stdout.write(buildResult({
       status:        "error",
@@ -157,6 +185,7 @@ async function run() {
       httpStatus:    null,
       networkErrors,
       consoleErrors,
+      resources,
       error:         err.message,
     }));
 

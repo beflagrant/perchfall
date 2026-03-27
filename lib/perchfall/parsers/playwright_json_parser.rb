@@ -13,16 +13,18 @@ module Perchfall
         @filter = filter
       end
 
-      def parse(raw_json, timestamp:, scenario_name: nil, original_url: nil, cache_profile: nil)
+      DEFAULT_LARGE_RESOURCE_THRESHOLD_BYTES = 200_000
+
+      def parse(raw_json, timestamp:, scenario_name: nil, original_url: nil, cache_profile: nil, capture_resources: false, large_resource_threshold_bytes: DEFAULT_LARGE_RESOURCE_THRESHOLD_BYTES)
         data = JSON.parse(raw_json, symbolize_names: true)
-        build_report(data, scenario_name: scenario_name, timestamp: timestamp, original_url: original_url, cache_profile: cache_profile)
+        build_report(data, scenario_name: scenario_name, timestamp: timestamp, original_url: original_url, cache_profile: cache_profile, capture_resources: capture_resources, large_resource_threshold_bytes: large_resource_threshold_bytes)
       rescue JSON::ParserError => e
         raise Errors::ParseError, "Invalid JSON from Playwright script: #{e.message}"
       end
 
       private
 
-      def build_report(data, scenario_name:, timestamp:, original_url: nil, cache_profile: nil)
+      def build_report(data, scenario_name:, timestamp:, original_url: nil, cache_profile: nil, capture_resources: false, large_resource_threshold_bytes: DEFAULT_LARGE_RESOURCE_THRESHOLD_BYTES)
         net_filtered     = @filter.filter_network(parse_network_errors(data.fetch(:network_errors, [])))
         console_filtered = @filter.filter_console(parse_console_errors(data.fetch(:console_errors, [])))
 
@@ -38,7 +40,8 @@ module Perchfall
           error:                  data[:error],
           scenario_name:          scenario_name,
           timestamp:              timestamp,
-          cache_profile:          cache_profile
+          cache_profile:          cache_profile,
+          resources:              capture_resources ? parse_resources(data.fetch(:resources, []), threshold_bytes: large_resource_threshold_bytes) : []
         )
       rescue KeyError => e
         raise Errors::ParseError, "Playwright JSON missing required field: #{e.message}"
@@ -66,6 +69,21 @@ module Perchfall
         end
       rescue KeyError => e
         raise Errors::ParseError, "Malformed console_error entry: #{e.message}"
+      end
+
+      def parse_resources(raw, threshold_bytes:)
+        raw.filter_map do |item|
+          size = item[:transfer_size]
+          next if size && size < threshold_bytes
+          Resource.new(
+            url:           item[:url],
+            http_method:   item[:method],
+            status:        item[:status],
+            content_type:  item[:content_type],
+            transfer_size: size,
+            resource_type: item[:resource_type]
+          )
+        end
       end
     end
   end

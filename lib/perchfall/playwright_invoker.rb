@@ -24,10 +24,10 @@ module Perchfall
       @script_path = script_path
     end
 
-    def run(url:, timestamp:, timeout_ms: 30_000, wait_until: "load", scenario_name: nil, ignore: [], original_url: nil, extra_headers: {}, cache_profile: nil)
+    def run(url:, timestamp:, timeout_ms: 30_000, wait_until: "load", scenario_name: nil, ignore: [], original_url: nil, extra_headers: {}, cache_profile: nil, capture_resources: false, large_resource_threshold_bytes: Parsers::PlaywrightJsonParser::DEFAULT_LARGE_RESOURCE_THRESHOLD_BYTES)
       parser = build_parser(ignore)
-      result = execute(build_command(url: url, timeout_ms: timeout_ms, wait_until: wait_until, extra_headers: extra_headers))
-      parse(result, parser: parser, scenario_name: scenario_name, timestamp: timestamp, original_url: original_url || url, cache_profile: cache_profile)
+      result = execute(build_command(url: url, timeout_ms: timeout_ms, wait_until: wait_until, extra_headers: extra_headers, capture_resources: capture_resources))
+      parse(result, parser: parser, scenario_name: scenario_name, timestamp: timestamp, original_url: original_url || url, cache_profile: cache_profile, capture_resources: capture_resources, large_resource_threshold_bytes: large_resource_threshold_bytes)
     end
 
     private
@@ -36,9 +36,10 @@ module Perchfall
       Parsers::PlaywrightJsonParser.new(filter: ErrorFilter.new(rules: ignore_rules))
     end
 
-    def build_command(url:, timeout_ms:, wait_until:, extra_headers: {})
+    def build_command(url:, timeout_ms:, wait_until:, extra_headers: {}, capture_resources: false)
       cmd = ["node", @script_path, "--url", url, "--timeout", timeout_ms.to_s, "--wait-until", wait_until]
       cmd += ["--headers", extra_headers.to_json] unless extra_headers.empty?
+      cmd += ["--capture-resources"] if capture_resources
       cmd
     end
 
@@ -57,7 +58,7 @@ module Perchfall
         )
       end
 
-      parser.parse(result.stdout, **opts)
+      parser.parse(result.stdout, timestamp: opts[:timestamp], scenario_name: opts[:scenario_name], original_url: opts[:original_url], cache_profile: opts[:cache_profile], capture_resources: opts[:capture_resources] || false, large_resource_threshold_bytes: opts[:large_resource_threshold_bytes] || Parsers::PlaywrightJsonParser::DEFAULT_LARGE_RESOURCE_THRESHOLD_BYTES)
     end
 
   end
