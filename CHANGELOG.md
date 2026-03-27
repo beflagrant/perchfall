@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-03-27
+
+### Added
+
+- `capture_resources: false` option on `Perchfall.run` / `Client#run` — when `true`, collects metadata for every resource loaded during the page run and stores large ones on the report
+- `report.resources` — array of `Resource` objects (url, http_method, status, content_type, transfer_size, resource_type) whose transfer size met or exceeded the configured threshold, plus any resource whose size could not be determined (absent `content-length`)
+- `large_resource_threshold_bytes:` option (default 200 000 bytes / 200 KB) — controls the minimum transfer size for a resource to appear in `report.resources`; only meaningful when `capture_resources: true`
+- `Perchfall::Resource` value object (`Data.define`) with all resource fields; `transfer_size` is `Integer` or `nil` (nil means unknown, not zero)
+
+### Notes
+
+- Resource capture is opt-in and off by default. No overhead is incurred unless `capture_resources: true` is passed.
+- Resources with an unknown transfer size (`nil`) are always included in `report.resources` — they cannot be proven to be below the threshold.
+- `report.ok?` is not affected by `report.resources` — size is a metric, not a pass/fail signal.
+
 ## [0.3.2] - 2026-03-19
 
 ### Added
@@ -74,7 +89,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Full dependency injection throughout — test suite runs in ~0.4 s with no browser, Node, or network required
 - GitHub Actions CI workflow (unit suite) and manual Playwright smoke check workflow
 
-[Unreleased]: https://github.com/beflagrant/perchfall/compare/v0.3.2...HEAD
+[Unreleased]: https://github.com/beflagrant/perchfall/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/beflagrant/perchfall/compare/v0.3.2...v0.4.0
 [0.3.2]: https://github.com/beflagrant/perchfall/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/beflagrant/perchfall/compare/v0.2.0...v0.3.1
 [0.2.0]: https://github.com/beflagrant/perchfall/compare/v0.1.0...v0.2.0
