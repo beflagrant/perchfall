@@ -1,8 +1,88 @@
-# Rails integration
+# Framework integration
 
-Perchfall has no Rails dependency — it works as a plain Ruby library. The recommended pattern is a background job that calls Perchfall and persists the result.
+Perchfall has no framework dependency — it works as a plain Ruby library. These examples show common patterns for integrating it into popular Ruby web frameworks.
 
-## Sidekiq job
+## Table of contents
+
+- [Hanami](#hanami)
+- [Rails](#rails)
+- [Sinatra](#sinatra)
+- [General notes](#general-notes)
+
+## Hanami
+
+Hanami 2.x applications can integrate Perchfall through an action for on-demand checks and a provider for dependency injection.
+
+### Provider
+
+```ruby
+# config/providers/perchfall.rb
+Hanami.app.register_provider(:perchfall) do
+  start do
+    require "perchfall"
+    register "perchfall.client", Perchfall::Client.new
+  end
+end
+```
+
+### Action
+
+```ruby
+# app/actions/checks/create.rb
+module MyApp
+  module Actions
+    module Checks
+      class Create < MyApp::Action
+        include Deps["perchfall.client"]
+
+        params do
+          required(:url).filled(:string)
+          optional(:scenario).filled(:string)
+        end
+
+        def handle(request, response)
+          halt 422, {error: "invalid params"}.to_json unless request.params.valid?
+
+          report = client.run(
+            url: request.params[:url],
+            scenario_name: request.params[:scenario]
+          )
+
+          response.status = report.ok? ? 200 : 502
+          response.format = :json
+          response.body = report.to_json
+        end
+      end
+    end
+  end
+end
+```
+
+### Background checks with a Rake task
+
+```ruby
+# Rakefile or lib/tasks/perchfall.rake
+namespace :perchfall do
+  desc "Run a synthetic check"
+  task :check, [:url, :scenario] do |_t, args|
+    require "perchfall"
+    report = Perchfall.run!(url: args[:url], scenario_name: args[:scenario])
+    puts "#{report.url} — #{report.ok? ? 'OK' : 'FAIL'} (#{report.duration_ms}ms)"
+  end
+end
+```
+
+Schedule with cron or any job scheduler:
+
+```cron
+*/5 * * * * cd /app && bundle exec rake perchfall:check[https://example.com,homepage]
+```
+
+## Rails
+
+The recommended pattern is a background job that calls Perchfall and persists the result.
+
+### Sidekiq job
 
 ```ruby
 # app/jobs/synthetic_check_job.rb
@@ -120,75 +200,6 @@ run Sinatra::Application
 ```
 
 For production use, pair with a job processor like [Sucker Punch](https://github.com/brandonhilkert/sucker_punch) (no external deps) or Sidekiq with the `sidekiq` gem.
-
-## Hanami
-
-Hanami 2.x applications can integrate Perchfall through an action for on-demand checks and a provider for dependency injection.
-
-### Provider
-
-```ruby
-# config/providers/perchfall.rb
-Hanami.app.register_provider(:perchfall) do
-  start do
-    require "perchfall"
-    register "perchfall.client", Perchfall::Client.new
-  end
-end
-```
-
-### Action
-
-```ruby
-# app/actions/checks/create.rb
-module MyApp
-  module Actions
-    module Checks
-      class Create < MyApp::Action
-        include Deps["perchfall.client"]
-
-        params do
-          required(:url).filled(:string)
-          optional(:scenario).filled(:string)
-        end
-
-        def handle(request, response)
-          halt 422, {error: "invalid params"}.to_json unless request.params.valid?
-
-          report = client.run(
-            url: request.params[:url],
-            scenario_name: request.params[:scenario]
-          )
-
-          response.status = report.ok? ? 200 : 502
-          response.format = :json
-          response.body = report.to_json
-        end
-      end
-    end
-  end
-end
-```
-
-### Background checks with a Rake task
-
-```ruby
-# Rakefile or lib/tasks/perchfall.rake
-namespace :perchfall do
-  desc "Run a synthetic check"
-  task :check, [:url, :scenario] do |_t, args|
-    require "perchfall"
-    report = Perchfall.run!(url: args[:url], scenario_name: args[:scenario])
-    puts "#{report.url} — #{report.ok? ? 'OK' : 'FAIL'} (#{report.duration_ms}ms)"
-  end
-end
-```
-
-Schedule with cron or any job scheduler:
-
-```cron
-*/5 * * * * cd /app && bundle exec rake perchfall:check[https://example.com,homepage]
-```
 
 ## General notes
 
