@@ -3,6 +3,7 @@
 [![CI](https://github.com/beflagrant/perchfall/actions/workflows/ci.yml/badge.svg)](https://github.com/beflagrant/perchfall/actions/workflows/ci.yml)
 [![Playwright smoke check](https://github.com/beflagrant/perchfall/actions/workflows/playwright.yml/badge.svg)](https://github.com/beflagrant/perchfall/actions/workflows/playwright.yml)
 [![Gem Version](https://badge.fury.io/rb/perchfall.svg)](https://badge.fury.io/rb/perchfall)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 **Synthetic browser monitoring for Ruby.** Give it a URL; get back a structured report of what a real Chromium browser saw — HTTP status, broken assets, JavaScript errors, and load time. No framework required.
 
