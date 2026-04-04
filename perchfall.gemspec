@@ -16,6 +16,7 @@ Gem::Specification.new do |spec|
   spec.homepage      = 'https://github.com/beflagrant/perchfall'
   spec.license       = 'MIT'
   spec.metadata      = {
+    'homepage_uri' => spec.homepage,
     'source_code_uri' => 'https://github.com/beflagrant/perchfall',
     'changelog_uri' => 'https://github.com/beflagrant/perchfall/blob/main/CHANGELOG.md',
     'bug_tracker_uri' => 'https://github.com/beflagrant/perchfall/issues',
