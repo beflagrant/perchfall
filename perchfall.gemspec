@@ -8,10 +8,12 @@ Gem::Specification.new do |spec|
   spec.authors       = ['Jim Remsik']
   spec.email         = ['jim@beflagrant.com']
 
-  spec.summary       = 'Synthetic browser monitoring via Playwright'
+  spec.summary       = 'Synthetic browser monitoring and uptime checks via Playwright'
   spec.description   = <<~DESC
-    Run headless browser checks against a URL using Playwright and receive a
-    structured, immutable Ruby report object — framework-agnostic, no persistence.
+    Run headless browser checks against any URL using Playwright.
+    Detects page-load failures, console errors, and network errors,
+    returning a structured Ruby report object. Framework-agnostic
+    and CI-friendly.
   DESC
   spec.homepage      = 'https://github.com/beflagrant/perchfall'
   spec.license       = 'MIT'
