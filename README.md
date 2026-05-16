@@ -5,7 +5,7 @@
 [![Gem Version](https://badge.fury.io/rb/perchfall.svg)](https://badge.fury.io/rb/perchfall)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**Synthetic browser monitoring for Ruby.** Give it a URL; get back a structured report of what a real Chromium browser saw — HTTP status, broken assets, JavaScript errors, and load time. No framework required.
+**Synthetic browser monitoring for Ruby.** Give it a URL; get back a structured report of what a Chromium browser saw — HTTP status, broken assets, JavaScript errors, and load time. No framework required.
 
 ```ruby
 report = Perchfall.run(url: "https://example.com")
@@ -187,6 +187,14 @@ bin/console                    # IRB with perchfall loaded
 
 ---
 
+## Contributing
+
+Bug reports and pull requests are welcome on [GitHub](https://github.com/beflagrant/perchfall). See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Code of Conduct
+
+Everyone interacting in the Perchfall project's codebases, issue trackers, and discussions is expected to follow the [code of conduct](CODE_OF_CONDUCT.md).
+
 ## License
 
-MIT
+Released under the [MIT License](LICENSE.txt).
