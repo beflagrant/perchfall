@@ -47,11 +47,13 @@ module Perchfall
     def initialize(
       invoker:   PlaywrightInvoker.new,
       validator: UrlValidator.new,
-      limiter:   Perchfall.default_limiter
+      limiter:   Perchfall.default_limiter,
+      sleeper:   ->(seconds) { sleep(seconds) }
     )
       @invoker   = invoker
       @validator = validator
       @limiter   = limiter
+      @sleeper   = sleeper
     end
 
     # Run a synthetic browser check against the given URL.
@@ -86,16 +88,20 @@ module Perchfall
 
     RunOptions = Data.define(
       :url, :ignore, :wait_until, :timeout_ms, :scenario_name,
-      :timestamp, :cache_profile, :capture_resources, :large_resource_threshold_bytes
+      :timestamp, :cache_profile, :capture_resources, :large_resource_threshold_bytes,
+      :retries, :retry_on, :retry_backoff_ms
     ) do
       def self.from_kwargs(url:, ignore: [], wait_until: 'load', timeout_ms: 30_000,
                            scenario_name: nil, timestamp: Time.now.utc,
                            cache_profile: :query_bust, capture_resources: false,
-                           large_resource_threshold_bytes: DEFAULT_RESOURCE_THRESHOLD)
+                           large_resource_threshold_bytes: DEFAULT_RESOURCE_THRESHOLD,
+                           retries: 0, retry_on: RetryPolicy::DEFAULT_CONDITIONS,
+                           retry_backoff_ms: 250)
         new(url: url, ignore: ignore, wait_until: wait_until, timeout_ms: timeout_ms,
             scenario_name: scenario_name, timestamp: timestamp, cache_profile: cache_profile,
             capture_resources: capture_resources,
-            large_resource_threshold_bytes: large_resource_threshold_bytes)
+            large_resource_threshold_bytes: large_resource_threshold_bytes,
+            retries: retries, retry_on: retry_on, retry_backoff_ms: retry_backoff_ms)
       end
     end
 
@@ -106,9 +112,48 @@ module Perchfall
       profile = resolve_cache_profile!(opts.cache_profile)
       validate_wait_until!(opts.wait_until)
       validate_timeout_ms!(opts.timeout_ms)
+      validate_retries!(opts.retries)
+      validate_retry_backoff_ms!(opts.retry_backoff_ms)
+      validate_retry_on!(opts.retry_on)
+      run_with_retries(opts, profile)
+    end
+
+    # Runs up to retries+1 attempts, stopping early as soon as an attempt
+    # succeeds or produces an outcome the caller did not opt to retry. The
+    # backoff sleep happens outside @limiter.acquire so no browser slot is held
+    # while waiting. ScriptError is captured so it can be retried; every other
+    # exception propagates on the spot.
+    def run_with_retries(opts, profile)
+      attempt = 0
+      loop do
+        attempt += 1
+        last = attempt > opts.retries
+        begin
+          report = run_once(opts, profile)
+        rescue Errors::ScriptError => e
+          raise if last || !RetryPolicy.retryable?(e, opts.retry_on)
+
+          backoff(opts.retry_backoff_ms, attempt)
+          next
+        end
+
+        return report if last || !RetryPolicy.retryable?(report, opts.retry_on)
+
+        backoff(opts.retry_backoff_ms, attempt)
+      end
+    end
+
+    def run_once(opts, profile)
       effective_url = profile[:bust_url] ? append_cache_buster(opts.url) : opts.url
       @validator.validate!(effective_url)
       @limiter.acquire { @invoker.run(**build_invoker_opts(opts, effective_url, profile)) }
+    end
+
+    # Exponential: 1st retry waits base_ms, then doubles each attempt.
+    def backoff(base_ms, attempt)
+      return if base_ms.zero?
+
+      @sleeper.call(base_ms * (2**(attempt - 1)) / 1000.0)
     end
 
     def build_invoker_opts(opts, effective_url, profile)
@@ -171,6 +216,35 @@ module Perchfall
 
       raise ArgumentError,
             "timeout_ms must be a positive integer no greater than #{MAX_TIMEOUT_MS}. Got: #{value.inspect}"
+    end
+
+    MAX_RETRIES = 10
+
+    def validate_retries!(value)
+      return if value.is_a?(Integer) && value >= 0 && value <= MAX_RETRIES
+
+      raise ArgumentError,
+            "retries must be an integer between 0 and #{MAX_RETRIES}. Got: #{value.inspect}"
+    end
+
+    MAX_RETRY_BACKOFF_MS = 30_000
+
+    def validate_retry_backoff_ms!(value)
+      return if value.is_a?(Integer) && value >= 0 && value <= MAX_RETRY_BACKOFF_MS
+
+      raise ArgumentError,
+            "retry_backoff_ms must be an integer between 0 and #{MAX_RETRY_BACKOFF_MS}. Got: #{value.inspect}"
+    end
+
+    def validate_retry_on!(value)
+      return if value.respond_to?(:call)
+
+      unknown = Array(value) - RetryPolicy::CONDITIONS
+      return if value.is_a?(Array) && unknown.empty?
+
+      raise ArgumentError,
+            "retry_on must be a callable or an array of #{RetryPolicy::CONDITIONS.join(", ")}. " \
+            "Got: #{value.inspect}"
     end
   end
 end

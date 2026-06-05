@@ -43,6 +43,30 @@ rescue Perchfall::Errors::Error => e
 end
 ```
 
+## Retrying transient failures
+
+Some of the failures above are transient — a navigation that timed out by a
+hair, a process blip, a 5xx during a restart. Rather than rescuing and looping
+yourself, opt into retries with `retries:` and declare which conditions are
+worth retrying via `retry_on:`. See [Retries](configuration.md#retries) for the
+full option reference.
+
+| Outcome | `retry_on` symbol | Retried by default? |
+| --- | --- | --- |
+| `status: "error"` report (load failure) | `:load_error` | ✅ |
+| `Errors::ScriptError` (process failure) | `:script_error` | ✅ |
+| HTTP 5xx network error | `:server_error` | ✅ |
+| HTTP 4xx network error | `:client_error` | — (available) |
+| `net::ERR_*` sub-resource failure | `:network_error` | — (available) |
+| JavaScript / console (assertion) error | — | **Never** — a real defect |
+| `ConcurrencyLimitError`, `InvocationError`, `ParseError`, `ArgumentError` | — | **Never** auto-retried |
+
+A failure is retried only when *every* reason it failed is a declared condition,
+so a transient 5xx that also carries a console error is **not** retried — the
+assertion failure would never clear. With retries enabled, `run!` raises
+`PageLoadError` only after attempts are exhausted and the final report is still
+not ok.
+
 ## `PageLoadError` and partial reports
 
 When Playwright can't finish loading a page, Perchfall raises `PageLoadError` rather than returning a report. The exception always carries a partial `report` with whatever was collected before the failure — network errors, console errors, and timing data may all be present. Always store it.

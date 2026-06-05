@@ -156,15 +156,36 @@ Every check returns a `Perchfall::Report`:
 
 ```ruby
 Perchfall.run(
-  url:           "https://example.com",
-  timeout_ms:    10_000,             # default 30_000, max 60_000
-  wait_until:    "domcontentloaded", # default "load"
-  scenario_name: "homepage_smoke",   # included in report JSON
-  cache_profile: :no_cache           # default :query_bust
+  url:              "https://example.com",
+  timeout_ms:       10_000,             # default 30_000, max 60_000
+  wait_until:       "domcontentloaded", # default "load"
+  scenario_name:    "homepage_smoke",   # included in report JSON
+  cache_profile:    :no_cache,          # default :query_bust
+  retries:          2,                  # default 0 (off); opt-in retry of transient failures
+  retry_on:         [:load_error, :script_error, :server_error], # default
+  retry_backoff_ms: 250                 # default 250 (exponential: 250, 500, 1000…)
 )
 ```
 
-→ [All options, cache profiles, and wait_until strategies](docs/configuration.md)
+### Retry transient failures
+
+Small timing blips — a navigation that times out by a hair, a connection reset,
+a server returning 5xx mid-restart — can fail a check that would pass on a second
+look. Retries are **opt-in**; you declare which conditions are worth retrying.
+
+```ruby
+# Up to 2 extra attempts on load/script/5xx failures (the defaults)
+Perchfall.run(url: "https://example.com", retries: 2)
+```
+
+Load failures, process failures (`:script_error`), and HTTP 5xx (`:server_error`)
+are retried by default; `:client_error` (4xx) and `:network_error` are available
+but off. JavaScript/console (assertion) errors are **never** retried — they are
+real defects, not timing blips. A failure is retried only when *every* reason it
+failed is a declared condition. `ConcurrencyLimitError` is not auto-retried —
+it's a back-pressure signal to back off at the caller level.
+
+→ [All options, cache profiles, retries, and wait_until strategies](docs/configuration.md)
 
 ---
 
@@ -180,8 +201,8 @@ Perchfall.run(
 
 ```sh
 bundle install
-bundle exec rspec              # ~0.5s, no browser or Node required (208 examples)
-RUN_JS_SPECS=true bundle exec rspec  # includes check.js integration specs (223 examples)
+bundle exec rspec              # ~0.5s, no browser or Node required (288 examples)
+RUN_JS_SPECS=true bundle exec rspec  # includes check.js integration specs (306 examples)
 bin/console                    # IRB with perchfall loaded
 ```
 
