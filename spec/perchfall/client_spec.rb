@@ -498,6 +498,15 @@ RSpec.describe Perchfall::Client do
         expect(recorded_sleeps).to eq([0.25, 0.5])
       end
 
+      it "caps each individual wait at MAX_RETRY_BACKOFF_MS" do
+        invoker = scripted_invoker(:load_error, :load_error, :load_error, :load_error)
+        client_with(invoker).run(
+          url: "https://example.com", retries: 3, retry_on: [:load_error], retry_backoff_ms: 30_000
+        )
+        # 30s, 60s, 120s uncapped => clamped to 30s each (no multi-minute sleeps).
+        expect(recorded_sleeps).to eq([30.0, 30.0, 30.0])
+      end
+
       it "does not sleep when retry_backoff_ms is 0" do
         invoker = scripted_invoker(:load_error, :ok)
         client_with(invoker).run(url: "https://example.com", retries: 2, retry_on: [:load_error], retry_backoff_ms: 0)

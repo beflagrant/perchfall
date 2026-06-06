@@ -149,11 +149,14 @@ module Perchfall
       @limiter.acquire { @invoker.run(**build_invoker_opts(opts, effective_url, profile)) }
     end
 
-    # Exponential: 1st retry waits base_ms, then doubles each attempt.
+    # Exponential: the wait before the 1st retry is base_ms, doubling each
+    # attempt, clamped so no single wait exceeds MAX_RETRY_BACKOFF_MS — a high
+    # base combined with many retries must not balloon into a multi-hour sleep.
     def backoff(base_ms, attempt)
       return if base_ms.zero?
 
-      @sleeper.call(base_ms * (2**(attempt - 1)) / 1000.0)
+      delay_ms = [base_ms * (2**(attempt - 1)), MAX_RETRY_BACKOFF_MS].min
+      @sleeper.call(delay_ms / 1000.0)
     end
 
     def build_invoker_opts(opts, effective_url, profile)

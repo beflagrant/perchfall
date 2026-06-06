@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `:network_error` — a sub-resource failed with a `net::ERR_*` error (available, off by default)
   - Default: `[:load_error, :script_error, :server_error]`
   - Predicate form: `retry_on: ->(outcome) { ... }` where `outcome` is the `Report` or raised exception; truthy means retry
-- `retry_backoff_ms: 250` option — exponential backoff between attempts (250ms, 500ms, 1000ms, …); `0` disables the delay. Capped at 30 000.
+- `retry_backoff_ms: 250` option — base for the exponential backoff between attempts (250ms, 500ms, 1000ms, …); `0` disables the delay. Each individual wait is capped at 30 000ms.
 - `Perchfall::RetryPolicy` — pure, side-effect-free module that classifies a run outcome's failure reasons and decides retryability.
 
 ### Notes

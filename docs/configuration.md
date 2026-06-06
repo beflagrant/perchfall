@@ -11,7 +11,7 @@
 | `cache_profile` | Symbol / Hash | `:query_bust` | Cache behaviour for the request. See below. |
 | `retries` | Integer | `0` | Additional attempts on a retryable failure (`N` retries = `N+1` attempts). Capped at `10`. See [Retries](#retries). |
 | `retry_on` | Array&lt;Symbol&gt; / Proc | `[:load_error, :script_error, :server_error]` | Which failure conditions are retryable. Only consulted when `retries > 0`. |
-| `retry_backoff_ms` | Integer | `250` | Exponential backoff between attempts (`250`, `500`, `1000`…). `0` disables. Capped at `30_000`. |
+| `retry_backoff_ms` | Integer | `250` | Base for the exponential backoff between attempts (`250`, `500`, `1000`…). `0` disables. Each wait is capped at `30_000`. |
 
 ## Cache profiles
 
@@ -93,10 +93,12 @@ Perchfall.run(url: "https://example.com", retries: 2, retry_on: ->(outcome) {
 ### Backoff
 
 `retry_backoff_ms:` (default `250`) is the base for an exponential delay between
-attempts: `250ms`, then `500ms`, then `1000ms`, and so on. Pass `0` for no
-delay. The browser concurrency slot is released while waiting, so a retrying run
-never starves other checks. Each `:query_bust` retry also gets a fresh `_pf=`
-timestamp for a genuinely cold re-fetch.
+attempts: `250ms`, then `500ms`, then `1000ms`, and so on. Each individual wait
+is capped at `30_000ms`, so a large base combined with many retries can never
+balloon into a multi-hour sleep. Pass `0` for no delay. The browser concurrency
+slot is released while waiting, so a retrying run never starves other checks.
+Each `:query_bust` retry also gets a fresh `_pf=` timestamp for a genuinely cold
+re-fetch.
 
 > **Not retried:** `ConcurrencyLimitError` (back-pressure — back off and retry
 > at the caller level), `InvocationError` (Node missing — a config problem),
