@@ -5,26 +5,26 @@
 module PlaywrightJsonFixture
   def ok_json(overrides = {})
     base = {
-      status:         "ok",
-      url:            "https://example.com",
-      duration_ms:    512,
-      http_status:    200,
+      status: "ok",
+      url: "https://example.com",
+      duration_ms: 512,
+      http_status: 200,
       network_errors: [],
       console_errors: [],
-      error:          nil
+      error: nil
     }
     base.merge(overrides).to_json
   end
 
   def error_json(overrides = {})
     base = {
-      status:         "error",
-      url:            "https://example.com",
-      duration_ms:    312,
-      http_status:    nil,
+      status: "error",
+      url: "https://example.com",
+      duration_ms: 312,
+      http_status: nil,
       network_errors: [],
       console_errors: [],
-      error:          "net::ERR_NAME_NOT_RESOLVED"
+      error: "net::ERR_NAME_NOT_RESOLVED"
     }
     base.merge(overrides).to_json
   end
@@ -41,10 +41,10 @@ module PlaywrightJsonFixture
 
   def resource_entry(overrides = {})
     {
-      url:           "https://example.com/hero.jpg",
-      method:        "GET",
-      status:        200,
-      content_type:  "image/jpeg",
+      url: "https://example.com/hero.jpg",
+      method: "GET",
+      status: 200,
+      content_type: "image/jpeg",
       transfer_size: 204_800,
       resource_type: "image"
     }.merge(overrides)

@@ -9,6 +9,9 @@
 | `wait_until` | String | `"load"` | When Playwright considers navigation complete. |
 | `scenario_name` | String | `nil` | Optional label included in the report. |
 | `cache_profile` | Symbol / Hash | `:query_bust` | Cache behaviour for the request. See below. |
+| `retries` | Integer | `0` | Additional attempts on a retryable failure (`N` retries = `N+1` attempts). Capped at `10`. See [Retries](#retries). |
+| `retry_on` | Array&lt;Symbol&gt; / Proc | `[:load_error, :script_error, :server_error]` | Which failure conditions are retryable. Only consulted when `retries > 0`. |
+| `retry_backoff_ms` | Integer | `250` | Base for the exponential backoff between attempts (`250`, `500`, `1000`…). `0` disables. Each wait is capped at `30_000`. |
 
 ## Cache profiles
 
@@ -35,6 +38,71 @@ Perchfall.run(url: "https://example.com", cache_profile: { headers: { "Cache-Con
 **Security note:** Custom profiles are validated against a forbidden-header denylist. `Authorization`, `Cookie`, `Set-Cookie`, `Host`, `X-Forwarded-For`, `X-Forwarded-Host`, and `X-Real-IP` are rejected with `ArgumentError`. See [Security](security.md) for details.
 
 **Note:** Header-based profiles (`setExtraHTTPHeaders`) apply to the initial navigation and all sub-resource requests within the page load, including requests to third-party origins.
+
+## Retries
+
+Retries are **opt-in**. With the default `retries: 0`, every run is a single
+attempt and `retry_on` / `retry_backoff_ms` are inert — behaviour is unchanged.
+
+Set `retries:` to re-run on a *retryable* failure. You decide what counts as
+retryable via `retry_on:` — load failures, process failures, and 5xx are
+retried by default; assertion (JavaScript console) errors never are.
+
+```ruby
+# Smooth over small timing blips: up to 2 extra attempts on the defaults
+Perchfall.run(url: "https://example.com", retries: 2)
+
+# Only retry server-side 5xx, with a snappier backoff
+Perchfall.run(
+  url:              "https://example.com",
+  retries:          3,
+  retry_on:         [:server_error],
+  retry_backoff_ms: 100
+)
+```
+
+### Retryable conditions
+
+`retry_on:` accepts an array of these named symbols (or a single bare symbol):
+
+| Condition | Matches | Default on? |
+| --- | --- | --- |
+| `:load_error` | Page failed to load — `status: "error"` (nav timeout, connection reset, DNS) | ✅ |
+| `:script_error` | The Node/Playwright process failed (`Errors::ScriptError`) | ✅ |
+| `:server_error` | A response returned HTTP 5xx | ✅ |
+| `:client_error` | A response returned HTTP 4xx | — |
+| `:network_error` | A sub-resource failed with a `net::ERR_*` error | — |
+
+JavaScript/console (assertion) errors are **never** retryable — they are real
+defects, not timing blips, so they cannot be named here.
+
+**A failure is retried only when *every* reason it failed is a declared
+condition.** A 5xx that also carries a console error is *not* retried when only
+`:server_error` is declared — the assertion failure would never clear, so the
+run would just fail again after exhausting the backoff budget.
+
+For a policy the named set can't express, pass a predicate proc. It receives the
+outcome — a `Report` or the raised exception — and returns truthy to retry:
+
+```ruby
+Perchfall.run(url: "https://example.com", retries: 2, retry_on: ->(outcome) {
+  outcome.is_a?(Perchfall::Report) && outcome.http_status == 503
+})
+```
+
+### Backoff
+
+`retry_backoff_ms:` (default `250`) is the base for an exponential delay between
+attempts: `250ms`, then `500ms`, then `1000ms`, and so on. Each individual wait
+is capped at `30_000ms`, so a large base combined with many retries can never
+balloon into a multi-hour sleep. Pass `0` for no delay. The browser concurrency
+slot is released while waiting, so a retrying run never starves other checks.
+Each `:query_bust` retry also gets a fresh `_pf=` timestamp for a genuinely cold
+re-fetch.
+
+> **Not retried:** `ConcurrencyLimitError` (back-pressure — back off and retry
+> at the caller level), `InvocationError` (Node missing — a config problem),
+> `ParseError`, and `ArgumentError` are never auto-retried.
 
 ## `wait_until` strategies
 

@@ -39,8 +39,9 @@ RSpec.describe Perchfall do
     context "check with network errors" do
       before do
         stub_runner_with(ok_json(
-          network_errors: [{ url: "https://example.com/missing.js", method: "GET", failure: "HTTP 404" }]
-        ))
+                           network_errors: [{ url: "https://example.com/missing.js", method: "GET",
+                                              failure: "HTTP 404" }]
+                         ))
       end
 
       it "returns a Report" do
@@ -107,8 +108,9 @@ RSpec.describe Perchfall do
     context "check with network errors" do
       before do
         stub_runner_with(ok_json(
-          network_errors: [{ url: "https://example.com/missing.js", method: "GET", failure: "HTTP 404" }]
-        ))
+                           network_errors: [{ url: "https://example.com/missing.js", method: "GET",
+                                              failure: "HTTP 404" }]
+                         ))
       end
 
       it "raises PageLoadError" do

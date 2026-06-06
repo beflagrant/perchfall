@@ -9,6 +9,7 @@ require_relative "perchfall/ignore_rule"
 require_relative "perchfall/error_filter"
 require_relative "perchfall/command_runner"
 require_relative "perchfall/concurrency_limiter"
+require_relative "perchfall/retry_policy"
 require_relative "perchfall/url_validator"
 require_relative "perchfall/resource"
 require_relative "perchfall/parsers/playwright_json_parser"
@@ -32,7 +33,7 @@ module Perchfall
   # and is never a signal of real page failure.
   # Callers extend this list by passing ignore: to Perchfall.run or Client#run.
   DEFAULT_IGNORE_RULES = [
-    IgnoreRule.new(pattern: //, type: "net::ERR_ABORTED", target: :network),
+    IgnoreRule.new(pattern: //, type: "net::ERR_ABORTED", target: :network)
   ].freeze
 
   # Process-wide concurrency limiter. Caps simultaneous Chromium instances
@@ -50,8 +51,8 @@ module Perchfall
   # @param url [String]
   # @param opts [Hash] forwarded to Client#run
   # @return [Report]
-  def self.run(url:, **opts)
-    Client.new.run(url: url, **opts)
+  def self.run(url:, **)
+    Client.new.run(url: url, **)
   end
 
   # Like .run, but raises PageLoadError if the report is not ok.
@@ -61,7 +62,7 @@ module Perchfall
   # @param opts [Hash] forwarded to Client#run!
   # @return [Report] only if report.ok?
   # @raise [Errors::PageLoadError]
-  def self.run!(url:, **opts)
-    Client.new.run!(url: url, **opts)
+  def self.run!(url:, **)
+    Client.new.run!(url: url, **)
   end
 end

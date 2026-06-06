@@ -36,7 +36,11 @@ RSpec.describe Perchfall::Client do
 
     it "does not invoke Playwright when the limit is exceeded" do
       tight = Perchfall::ConcurrencyLimiter.new(limit: 0, timeout_ms: 0)
-      described_class.new(invoker: recording_invoker, limiter: tight).run(url: "https://example.com") rescue nil
+      begin
+        described_class.new(invoker: recording_invoker, limiter: tight).run(url: "https://example.com")
+      rescue StandardError
+        nil
+      end
       expect(recording_invoker.last_url).to be_nil
     end
 
@@ -67,7 +71,7 @@ RSpec.describe Perchfall::Client do
 
   it "delegates run to the invoker with the effective (cache-busted) url by default" do
     client.run(url: "https://example.com")
-    expect(recording_invoker.last_url).to match(/\Ahttps:\/\/example\.com\?_pf=\d+\z/)
+    expect(recording_invoker.last_url).to match(%r{\Ahttps://example\.com\?_pf=\d+\z})
   end
 
   it "forwards keyword options to the invoker" do
@@ -99,14 +103,14 @@ RSpec.describe Perchfall::Client do
       end.new
 
       described_class.new(invoker: recording_invoker, validator: fake_validator, limiter: limiter)
-        .run(url: "https://example.com", cache_profile: :query_bust)
+                     .run(url: "https://example.com", cache_profile: :query_bust)
 
       expect(recorded_urls.first).to match(/_pf=\d+/)
     end
 
     it ":query_bust appends _pf= to the URL" do
       client.run(url: "https://example.com", cache_profile: :query_bust)
-      expect(recording_invoker.last_url).to match(/\Ahttps:\/\/example\.com\?_pf=\d+\z/)
+      expect(recording_invoker.last_url).to match(%r{\Ahttps://example\.com\?_pf=\d+\z})
     end
 
     it ":warm passes the URL unchanged" do
@@ -125,7 +129,7 @@ RSpec.describe Perchfall::Client do
       expect(recording_invoker.last_url).to eq("https://example.com")
       expect(recording_invoker.last_opts[:extra_headers]).to eq(
         "Cache-Control" => "no-store, no-cache",
-        "Pragma"        => "no-cache"
+        "Pragma" => "no-cache"
       )
     end
 
@@ -156,26 +160,26 @@ RSpec.describe Perchfall::Client do
         X-Real-IP
       ].each do |forbidden|
         it "rejects #{forbidden} header in custom profile" do
-          expect {
+          expect do
             client.run(url: "https://example.com", cache_profile: { headers: { forbidden => "value" } })
-          }.to raise_error(ArgumentError, /#{Regexp.escape(forbidden)}/)
+          end.to raise_error(ArgumentError, /#{Regexp.escape(forbidden)}/)
         end
 
         it "rejects #{forbidden} header case-insensitively" do
-          expect {
+          expect do
             client.run(url: "https://example.com", cache_profile: { headers: { forbidden.downcase => "value" } })
-          }.to raise_error(ArgumentError, /#{Regexp.escape(forbidden.downcase)}/i)
+          end.to raise_error(ArgumentError, /#{Regexp.escape(forbidden.downcase)}/i)
         end
       end
 
       it "accepts safe cache-related headers" do
-        expect {
+        expect do
           client.run(url: "https://example.com", cache_profile: { headers: {
-            "Cache-Control" => "no-cache",
-            "Pragma"        => "no-cache",
-            "Accept"        => "text/html"
-          } })
-        }.not_to raise_error
+                       "Cache-Control" => "no-cache",
+                       "Pragma" => "no-cache",
+                       "Accept" => "text/html"
+                     } })
+        end.not_to raise_error
       end
     end
 
@@ -245,7 +249,11 @@ RSpec.describe Perchfall::Client do
     end
 
     it "rejects wait_until before invoking Playwright" do
-      client.run(url: "https://example.com", wait_until: "bogus") rescue nil
+      begin
+        client.run(url: "https://example.com", wait_until: "bogus")
+      rescue StandardError
+        nil
+      end
       expect(recording_invoker.last_url).to be_nil
     end
 
@@ -255,8 +263,12 @@ RSpec.describe Perchfall::Client do
         define_method(:validate!) { |url| validated_urls << url }
       end.new
 
-      described_class.new(invoker: recording_invoker, validator: fake_validator, limiter: limiter)
-        .run(url: "https://example.com", wait_until: "bogus") rescue nil
+      begin
+        described_class.new(invoker: recording_invoker, validator: fake_validator, limiter: limiter)
+                       .run(url: "https://example.com", wait_until: "bogus")
+      rescue StandardError
+        nil
+      end
 
       expect(validated_urls).to be_empty
     end
@@ -292,7 +304,11 @@ RSpec.describe Perchfall::Client do
     end
 
     it "rejects timeout_ms before invoking Playwright" do
-      client.run(url: "https://example.com", timeout_ms: -1) rescue nil
+      begin
+        client.run(url: "https://example.com", timeout_ms: -1)
+      rescue StandardError
+        nil
+      end
       expect(recording_invoker.last_url).to be_nil
     end
 
@@ -302,8 +318,12 @@ RSpec.describe Perchfall::Client do
         define_method(:validate!) { |url| validated_urls << url }
       end.new
 
-      described_class.new(invoker: recording_invoker, validator: fake_validator, limiter: limiter)
-        .run(url: "https://example.com", timeout_ms: -1) rescue nil
+      begin
+        described_class.new(invoker: recording_invoker, validator: fake_validator, limiter: limiter)
+                       .run(url: "https://example.com", timeout_ms: -1)
+      rescue StandardError
+        nil
+      end
 
       expect(validated_urls).to be_empty
     end
@@ -356,9 +376,9 @@ RSpec.describe Perchfall::Client do
         end
       end.new
 
-      expect {
+      expect do
         described_class.new(invoker: not_ok_invoker, limiter: limiter).run!(url: "https://example.com")
-      }.to raise_error(Perchfall::Errors::PageLoadError)
+      end.to raise_error(Perchfall::Errors::PageLoadError)
     end
 
     it "carries the report on the PageLoadError" do
@@ -375,6 +395,199 @@ RSpec.describe Perchfall::Client do
       described_class.new(invoker: not_ok_invoker, limiter: limiter).run!(url: "https://example.com")
     rescue Perchfall::Errors::PageLoadError => e
       expect(e.report.error).to eq("net::ERR_NAME_NOT_RESOLVED")
+    end
+  end
+
+  describe "retries" do
+    # An invoker driven by a scripted list of outcomes (one per attempt).
+    # Each outcome is either :ok, :load_error, or a built exception. Records
+    # how many times #run was called.
+    def scripted_invoker(*outcomes)
+      Class.new do
+        attr_reader :calls
+
+        define_method(:initialize) do
+          @outcomes = outcomes
+          @calls = 0
+        end
+
+        def run(url:, **)
+          @calls += 1
+          outcome = @outcomes[@calls - 1] || @outcomes.last
+          raise outcome if outcome.is_a?(Exception)
+
+          case outcome
+          when :ok
+            Perchfall::Report.new(
+              status: "ok", url: url, duration_ms: 1, http_status: 200,
+              network_errors: [], console_errors: [], error: nil
+            )
+          when :load_error
+            Perchfall::Report.new(
+              status: "error", url: url, duration_ms: 1, http_status: nil,
+              network_errors: [], console_errors: [], error: "net::ERR_TIMED_OUT"
+            )
+          end
+        end
+      end.new
+    end
+
+    # Records backoff durations instead of sleeping, so tests stay instant.
+    let(:recorded_sleeps) { [] }
+    let(:spy_sleeper) { ->(seconds) { recorded_sleeps << seconds } }
+
+    def client_with(invoker)
+      described_class.new(invoker: invoker, limiter: limiter, sleeper: spy_sleeper)
+    end
+
+    it "does not retry by default (retries: 0)" do
+      invoker = scripted_invoker(:load_error, :ok)
+      report = client_with(invoker).run(url: "https://example.com")
+      expect(invoker.calls).to eq(1)
+      expect(report).not_to be_ok
+    end
+
+    it "retries a declared condition and returns the first ok report" do
+      invoker = scripted_invoker(:load_error, :load_error, :ok)
+      report = client_with(invoker).run(url: "https://example.com", retries: 2, retry_on: [:load_error])
+      expect(invoker.calls).to eq(3)
+      expect(report).to be_ok
+    end
+
+    it "stops retrying once it gets an ok report" do
+      invoker = scripted_invoker(:load_error, :ok, :load_error)
+      client_with(invoker).run(url: "https://example.com", retries: 3, retry_on: [:load_error])
+      expect(invoker.calls).to eq(2)
+    end
+
+    it "does not retry a reason that was not opted in" do
+      invoker = scripted_invoker(:load_error, :ok)
+      report = client_with(invoker).run(url: "https://example.com", retries: 2, retry_on: [:server_error])
+      expect(invoker.calls).to eq(1)
+      expect(report).not_to be_ok
+    end
+
+    it "returns the last not-ok report when retries are exhausted" do
+      invoker = scripted_invoker(:load_error, :load_error, :load_error)
+      report = client_with(invoker).run(url: "https://example.com", retries: 2, retry_on: [:load_error])
+      expect(invoker.calls).to eq(3)
+      expect(report).not_to be_ok
+    end
+
+    it "makes run! raise PageLoadError after exhausting retries" do
+      invoker = scripted_invoker(:load_error, :load_error)
+      expect do
+        client_with(invoker).run!(url: "https://example.com", retries: 1, retry_on: [:load_error])
+      end.to raise_error(Perchfall::Errors::PageLoadError)
+      expect(invoker.calls).to eq(2)
+    end
+
+    it "retries a raised ScriptError when :script_error is declared" do
+      invoker = scripted_invoker(Perchfall::Errors::ScriptError.new("boom"), :ok)
+      report = client_with(invoker).run(url: "https://example.com", retries: 1, retry_on: [:script_error])
+      expect(invoker.calls).to eq(2)
+      expect(report).to be_ok
+    end
+
+    it "re-raises ScriptError when retries are exhausted" do
+      invoker = scripted_invoker(Perchfall::Errors::ScriptError.new("boom"))
+      expect do
+        client_with(invoker).run(url: "https://example.com", retries: 1, retry_on: [:script_error])
+      end.to raise_error(Perchfall::Errors::ScriptError)
+      expect(invoker.calls).to eq(2)
+    end
+
+    it "never retries InvocationError, even with all conditions declared" do
+      invoker = scripted_invoker(Perchfall::Errors::InvocationError.new("no node"))
+      expect do
+        client_with(invoker).run(url: "https://example.com", retries: 3, retry_on: Perchfall::RetryPolicy::CONDITIONS)
+      end.to raise_error(Perchfall::Errors::InvocationError)
+      expect(invoker.calls).to eq(1)
+    end
+
+    it "accepts a predicate proc for retry_on" do
+      invoker = scripted_invoker(:load_error, :ok)
+      only_reports = ->(outcome) { outcome.is_a?(Perchfall::Report) && outcome.status == "error" }
+      report = client_with(invoker).run(url: "https://example.com", retries: 2, retry_on: only_reports)
+      expect(invoker.calls).to eq(2)
+      expect(report).to be_ok
+    end
+
+    describe "backoff" do
+      it "waits with exponential backoff between attempts and not after the last" do
+        invoker = scripted_invoker(:load_error, :load_error, :load_error)
+        client_with(invoker).run(url: "https://example.com", retries: 2, retry_on: [:load_error], retry_backoff_ms: 250)
+        # Two retries => two sleeps (none after the final attempt): 250ms, 500ms.
+        expect(recorded_sleeps).to eq([0.25, 0.5])
+      end
+
+      it "caps each individual wait at MAX_RETRY_BACKOFF_MS" do
+        invoker = scripted_invoker(:load_error, :load_error, :load_error, :load_error)
+        client_with(invoker).run(
+          url: "https://example.com", retries: 3, retry_on: [:load_error], retry_backoff_ms: 30_000
+        )
+        # 30s, 60s, 120s uncapped => clamped to 30s each (no multi-minute sleeps).
+        expect(recorded_sleeps).to eq([30.0, 30.0, 30.0])
+      end
+
+      it "does not sleep when retry_backoff_ms is 0" do
+        invoker = scripted_invoker(:load_error, :ok)
+        client_with(invoker).run(url: "https://example.com", retries: 2, retry_on: [:load_error], retry_backoff_ms: 0)
+        expect(recorded_sleeps).to be_empty
+      end
+
+      it "does not sleep when nothing is retried" do
+        invoker = scripted_invoker(:ok)
+        client_with(invoker).run(url: "https://example.com", retries: 2)
+        expect(recorded_sleeps).to be_empty
+      end
+    end
+
+    describe "validation" do
+      it "rejects a negative retries before invoking" do
+        expect { client.run(url: "https://example.com", retries: -1) }
+          .to raise_error(ArgumentError, /retries/)
+        expect(recording_invoker.last_url).to be_nil
+      end
+
+      it "rejects retries above the cap" do
+        expect { client.run(url: "https://example.com", retries: 11) }
+          .to raise_error(ArgumentError, /retries/)
+      end
+
+      it "rejects a non-integer retry_backoff_ms" do
+        expect { client.run(url: "https://example.com", retry_backoff_ms: "soon") }
+          .to raise_error(ArgumentError, /retry_backoff_ms/)
+      end
+
+      it "rejects an unknown retry_on symbol before invoking" do
+        expect { client.run(url: "https://example.com", retry_on: [:assertion]) }
+          .to raise_error(ArgumentError, /retry_on/)
+        expect(recording_invoker.last_url).to be_nil
+      end
+
+      it "accepts the full set of valid conditions" do
+        expect { client.run(url: "https://example.com", retry_on: Perchfall::RetryPolicy::CONDITIONS) }
+          .not_to raise_error
+      end
+
+      it "accepts a bare condition symbol (not just an array)" do
+        expect { client.run(url: "https://example.com", retry_on: :server_error) }
+          .not_to raise_error
+      end
+
+      it "rejects a bare unknown symbol" do
+        expect { client.run(url: "https://example.com", retry_on: :assertion) }
+          .to raise_error(ArgumentError, /retry_on/)
+        expect(recording_invoker.last_url).to be_nil
+      end
+    end
+
+    it "honours a bare condition symbol when deciding to retry" do
+      invoker = scripted_invoker(:load_error, :ok)
+      report = client_with(invoker).run(url: "https://example.com", retries: 1, retry_on: :load_error)
+      expect(invoker.calls).to eq(2)
+      expect(report).to be_ok
     end
   end
 end

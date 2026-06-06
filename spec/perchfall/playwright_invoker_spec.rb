@@ -32,9 +32,9 @@ RSpec.describe Perchfall::PlaywrightInvoker do
 
       it "uses original_url for report.url when provided" do
         report = invoker.run(
-          url:          "https://example.com?_pf=123",
+          url: "https://example.com?_pf=123",
           original_url: "https://example.com",
-          timestamp:    fixed_time
+          timestamp: fixed_time
         )
         expect(report.url).to eq("https://example.com")
       end
@@ -61,12 +61,12 @@ RSpec.describe Perchfall::PlaywrightInvoker do
         invoker = described_class.new(runner: runner)
         invoker.run(url: "https://example.com", timeout_ms: 5_000, timestamp: fixed_time)
         expect(runner.last_command).to eq([
-          "node",
-          Perchfall::PlaywrightInvoker::DEFAULT_SCRIPT_PATH,
-          "--url", "https://example.com",
-          "--timeout", "5000",
-          "--wait-until", "load"
-        ])
+                                            "node",
+                                            Perchfall::PlaywrightInvoker::DEFAULT_SCRIPT_PATH,
+                                            "--url", "https://example.com",
+                                            "--timeout", "5000",
+                                            "--wait-until", "load"
+                                          ])
       end
 
       it "uses the default 30_000 ms timeout when none given" do
@@ -161,9 +161,10 @@ RSpec.describe Perchfall::PlaywrightInvoker do
       it "moves matched network errors to ignored_network_errors" do
         rule   = Perchfall::IgnoreRule.new(pattern: "shop.app", type: "HTTP 403", target: :network)
         runner = FakeCommandRunner.new(stdout: ok_json(network_errors: [
-          { url: "https://shop.app/pay", method: "GET", failure: "HTTP 403" }
-        ]))
-        report = described_class.new(runner: runner).run(url: "https://example.com", timestamp: fixed_time, ignore: [rule])
+                                                         { url: "https://shop.app/pay", method: "GET", failure: "HTTP 403" }
+                                                       ]))
+        report = described_class.new(runner: runner).run(url: "https://example.com", timestamp: fixed_time,
+                                                         ignore: [rule])
         expect(report.network_errors).to be_empty
         expect(report.ignored_network_errors.first.failure).to eq("HTTP 403")
       end
@@ -171,7 +172,8 @@ RSpec.describe Perchfall::PlaywrightInvoker do
       it "moves matched console errors to ignored_console_errors" do
         rule   = Perchfall::IgnoreRule.new(pattern: "ReferenceError", type: "error", target: :console)
         runner = FakeCommandRunner.new(stdout: ok_json(console_errors: [console_error_entry]))
-        report = described_class.new(runner: runner).run(url: "https://example.com", timestamp: fixed_time, ignore: [rule])
+        report = described_class.new(runner: runner).run(url: "https://example.com", timestamp: fixed_time,
+                                                         ignore: [rule])
         expect(report.console_errors).to be_empty
         expect(report.ignored_console_errors.first.text).to include("ReferenceError")
       end

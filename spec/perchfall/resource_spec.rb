@@ -5,10 +5,10 @@ require "spec_helper"
 RSpec.describe Perchfall::Resource do
   subject(:resource) do
     described_class.new(
-      url:           "https://example.com/hero.jpg",
-      http_method:   "GET",
-      status:        200,
-      content_type:  "image/jpeg",
+      url: "https://example.com/hero.jpg",
+      http_method: "GET",
+      status: 200,
+      content_type: "image/jpeg",
       transfer_size: 204_800,
       resource_type: "image"
     )

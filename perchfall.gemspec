@@ -1,42 +1,42 @@
 # frozen_string_literal: true
 
-require_relative 'lib/perchfall/version'
+require_relative "lib/perchfall/version"
 
 Gem::Specification.new do |spec|
-  spec.name          = 'perchfall'
+  spec.name          = "perchfall"
   spec.version       = Perchfall::VERSION
-  spec.authors       = ['Jim Remsik']
-  spec.email         = ['jim@beflagrant.com']
+  spec.authors       = ["Jim Remsik"]
+  spec.email         = ["jim@beflagrant.com"]
 
-  spec.summary       = 'Synthetic browser monitoring and uptime checks via Playwright'
+  spec.summary       = "Synthetic browser monitoring and uptime checks via Playwright"
   spec.description   = <<~DESC
     Run headless browser checks against any URL using Playwright.
     Detects page-load failures, console errors, and network errors,
     returning a structured Ruby report object. Framework-agnostic
     and CI-friendly.
   DESC
-  spec.homepage      = 'https://github.com/beflagrant/perchfall'
-  spec.license       = 'MIT'
+  spec.homepage      = "https://github.com/beflagrant/perchfall"
+  spec.license       = "MIT"
   spec.metadata      = {
-    'homepage_uri' => spec.homepage,
-    'source_code_uri' => 'https://github.com/beflagrant/perchfall',
-    'changelog_uri' => 'https://github.com/beflagrant/perchfall/blob/main/CHANGELOG.md',
-    'bug_tracker_uri' => 'https://github.com/beflagrant/perchfall/issues',
-    'rubygems_mfa_required' => 'true'
+    "homepage_uri" => spec.homepage,
+    "source_code_uri" => "https://github.com/beflagrant/perchfall",
+    "changelog_uri" => "https://github.com/beflagrant/perchfall/blob/main/CHANGELOG.md",
+    "bug_tracker_uri" => "https://github.com/beflagrant/perchfall/issues",
+    "rubygems_mfa_required" => "true"
   }
 
-  spec.required_ruby_version = '>= 3.2.0'
+  spec.required_ruby_version = ">= 3.2.0"
 
   spec.files = Dir[
-    'lib/**/*',
-    'playwright/**/*',
-    'README.md',
-    'CHANGELOG.md',
-    'LICENSE.txt',
-    'perchfall.gemspec'
+    "lib/**/*",
+    "playwright/**/*",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE.txt",
+    "perchfall.gemspec"
   ].reject { |f| File.directory?(f) }
 
-  spec.require_paths = ['lib']
+  spec.require_paths = ["lib"]
 
   spec.post_install_message = <<~MSG
     perchfall requires Node.js and Playwright to run browser checks.
@@ -47,9 +47,9 @@ Gem::Specification.new do |spec|
   MSG
 
   # json is in stdlib but declared explicitly so bundler resolves it correctly
-  spec.add_dependency 'json', '>= 2.0'
+  spec.add_dependency "json", ">= 2.0"
 
-  spec.add_development_dependency 'rspec',      '~> 3.13'
-  spec.add_development_dependency 'rubocop',    '~> 1.70'
-  spec.add_development_dependency 'simplecov',  '~> 0.22'
+  spec.add_development_dependency "rspec",      "~> 3.13"
+  spec.add_development_dependency "rubocop",    "~> 1.70"
+  spec.add_development_dependency "simplecov",  "~> 0.22"
 end

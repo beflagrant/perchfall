@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-06-05
+
+### Added
+
+- `retries: 0` option on `Perchfall.run` / `Client#run` — opt-in retry of failed runs. `retries: N` allows up to N additional attempts (N+1 total). The default of `0` preserves the existing single-shot behaviour exactly.
+- `retry_on:` option — declares which failure conditions are retryable. Accepts either an array of named symbols or a predicate proc:
+  - `:load_error` — the page failed to load (`status: "error"`: navigation timeout, connection reset, DNS, etc.)
+  - `:script_error` — the Node/Playwright process failed (`Errors::ScriptError` was raised)
+  - `:server_error` — a response returned HTTP 5xx
+  - `:client_error` — a response returned HTTP 4xx (available, off by default)
+  - `:network_error` — a sub-resource failed with a `net::ERR_*` error (available, off by default)
+  - Default: `[:load_error, :script_error, :server_error]`
+  - Predicate form: `retry_on: ->(outcome) { ... }` where `outcome` is the `Report` or raised exception; truthy means retry
+- `retry_backoff_ms: 250` option — base for the exponential backoff between attempts (250ms, 500ms, 1000ms, …); `0` disables the delay. Each individual wait is capped at 30 000ms.
+- `Perchfall::RetryPolicy` — pure, side-effect-free module that classifies a run outcome's failure reasons and decides retryability.
+
+### Notes
+
+- Retries are opt-in and off by default. With `retries: 0`, `retry_on` and `retry_backoff_ms` are inert.
+- **Symbol form is conservative:** a run is retried only when *every* reason it failed is a declared condition. A 5xx that also carries a JavaScript console error is **not** retried when only `:server_error` is declared — the assertion failure would never clear.
+- Console/JavaScript (assertion) errors are never retryable via the symbol form — they are real defects, not timing blips.
+- `ConcurrencyLimitError`, `InvocationError`, `ParseError`, and `ArgumentError` are never auto-retried.
+- The browser concurrency slot is released during the backoff delay — a waiting run does not hold a slot while sleeping. Each `:query_bust` retry uses a fresh `_pf=` timestamp for a genuinely cold re-fetch.
+
 ## [0.4.0] - 2026-03-27
 
 ### Added
@@ -89,7 +113,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Full dependency injection throughout — test suite runs in ~0.4 s with no browser, Node, or network required
 - GitHub Actions CI workflow (unit suite) and manual Playwright smoke check workflow
 
-[Unreleased]: https://github.com/beflagrant/perchfall/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/beflagrant/perchfall/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/beflagrant/perchfall/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/beflagrant/perchfall/compare/v0.3.2...v0.4.0
 [0.3.2]: https://github.com/beflagrant/perchfall/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/beflagrant/perchfall/compare/v0.2.0...v0.3.1

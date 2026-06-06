@@ -9,8 +9,8 @@ module Perchfall
   #   :all     — applied to both error types
   class ErrorFilter
     def initialize(rules:)
-      @network_rules = rules.select { |r| r.target == :network || r.target == :all }
-      @console_rules = rules.select { |r| r.target == :console || r.target == :all }
+      @network_rules = rules.select { |r| %i[network all].include?(r.target) }
+      @console_rules = rules.select { |r| %i[console all].include?(r.target) }
     end
 
     # @param errors [Array<NetworkError>]

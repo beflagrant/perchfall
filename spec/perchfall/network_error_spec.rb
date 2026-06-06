@@ -26,18 +26,18 @@ RSpec.describe Perchfall::NetworkError do
 
   it "serializes to a plain hash via to_h with key :method for JSON compatibility" do
     expect(ne.to_h).to eq({
-      url:     "https://cdn.example.com/app.js",
-      method:  "GET",
-      failure: "net::ERR_ABORTED"
-    })
+                            url: "https://cdn.example.com/app.js",
+                            method: "GET",
+                            failure: "net::ERR_ABORTED"
+                          })
   end
 
   it "round-trips through to_json / JSON.parse" do
     parsed = JSON.parse(ne.to_json)
     expect(parsed).to eq({
-      "url"     => "https://cdn.example.com/app.js",
-      "method"  => "GET",
-      "failure" => "net::ERR_ABORTED"
-    })
+                           "url" => "https://cdn.example.com/app.js",
+                           "method" => "GET",
+                           "failure" => "net::ERR_ABORTED"
+                         })
   end
 end

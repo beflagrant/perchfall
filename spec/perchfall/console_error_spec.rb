@@ -22,10 +22,10 @@ RSpec.describe Perchfall::ConsoleError do
 
   it "serializes to a plain hash via to_h" do
     expect(ce.to_h).to eq({
-      type:     "error",
-      text:     "Uncaught ReferenceError: foo",
-      location: "https://example.com/app.js:10:5"
-    })
+                            type: "error",
+                            text: "Uncaught ReferenceError: foo",
+                            location: "https://example.com/app.js:10:5"
+                          })
   end
 
   it "round-trips through to_json / JSON.parse" do

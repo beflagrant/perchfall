@@ -1,18 +1,36 @@
+inherit_from: .rubocop_todo.yml
+
 AllCops:
   NewCops: enable
+  TargetRubyVersion: 3.2
+  SuggestExtensions: false
+
+# The codebase consistently uses double-quoted strings. Enforce that rather
+# than RuboCop's single-quote default so the house style is the guarded style.
+Style/StringLiterals:
+  EnforcedStyle: double_quotes
+
+Style/StringLiteralsInInterpolation:
+  EnforcedStyle: double_quotes
+
+# RSpec example groups are intentionally long; block length is not a useful
+# signal for spec files.
+Metrics/BlockLength:
+  Exclude:
+    - 'spec/**/*'
 
 # client.rb carries the full public option set for runs. RunOptions.from_kwargs
 # intentionally mirrors every run option, so parameter and length limits are
 # legitimately exceeded there. build_invoker_opts assembles a hash that maps
 # one-to-one with the invoker's keyword signature — splitting it further would
-# obscure rather than clarify.
+# obscure rather than clarify. The numeric limits for these cops are
+# grandfathered in .rubocop_todo.yml; here we only record the deliberate
+# client.rb exemption (merged with the inherited Max).
 Metrics/ParameterLists:
-  Max: 5
   Exclude:
     - 'lib/perchfall/client.rb'
 
 Metrics/MethodLength:
-  Max: 10
   Exclude:
     - 'lib/perchfall/client.rb'
 

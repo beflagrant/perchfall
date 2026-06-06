@@ -90,7 +90,7 @@ RSpec.describe Perchfall::UrlValidator do
       end
 
       it "accepts a hostname when DNS returns no addresses (non-resolving domain is allowed through)" do
-        expect { validator_resolving_to().validate!("https://nonexistent.example.com") }
+        expect { validator_resolving_to.validate!("https://nonexistent.example.com") }
           .not_to raise_error
       end
     end

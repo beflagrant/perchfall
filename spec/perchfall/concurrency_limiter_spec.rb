@@ -23,9 +23,9 @@ RSpec.describe Perchfall::ConcurrencyLimiter do
     end
 
     context "at the limit" do
-      it 'raises ConcurrencyLimitError immediately when limit is 0 and timeout is 0' do
+      it "raises ConcurrencyLimitError immediately when limit is 0 and timeout is 0" do
         limiter = described_class.new(limit: 0, timeout_ms: 0)
-        expect { limiter.acquire { } }
+        expect { limiter.acquire {} }
           .to raise_error(Perchfall::Errors::ConcurrencyLimitError)
       end
 
@@ -38,7 +38,10 @@ RSpec.describe Perchfall::ConcurrencyLimiter do
 
         t1 = Thread.new do
           limiter.acquire do
-            barrier.synchronize { first_holding = true; condvar.broadcast }
+            barrier.synchronize do
+              first_holding = true
+              condvar.broadcast
+            end
             sleep 0.02
             order << :first
           end
@@ -60,7 +63,7 @@ RSpec.describe Perchfall::ConcurrencyLimiter do
         blocker  = Thread.new { limiter.acquire { sleep 0.2 } }
         sleep 0.01 # let blocker acquire the slot
 
-        expect { limiter.acquire { } }
+        expect { limiter.acquire {} }
           .to raise_error(Perchfall::Errors::ConcurrencyLimitError, /timeout/)
 
         blocker.join
@@ -84,7 +87,7 @@ RSpec.describe Perchfall::ConcurrencyLimiter do
     end
 
     it "decrements while a block is held" do
-      limiter  = described_class.new(limit: 2)
+      limiter = described_class.new(limit: 2)
       inside = false
 
       t = Thread.new do

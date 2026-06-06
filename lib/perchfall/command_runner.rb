@@ -24,8 +24,8 @@ module Perchfall
     def call(command)
       stdout, stderr, status = Open3.capture3(*command)
       Result.new(
-        stdout:      stdout,
-        stderr:      stderr,
+        stdout: stdout,
+        stderr: stderr,
         exit_status: status.exitstatus
       )
     end

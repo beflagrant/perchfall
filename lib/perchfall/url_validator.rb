@@ -35,7 +35,7 @@ module Perchfall
       IPAddr.new("10.0.0.0/8"),        # RFC-1918
       IPAddr.new("172.16.0.0/12"),     # RFC-1918
       IPAddr.new("192.168.0.0/16"),    # RFC-1918
-      IPAddr.new("0.0.0.0/8"),         # unroutable
+      IPAddr.new("0.0.0.0/8") # unroutable
     ].freeze
 
     def initialize(resolver: Resolv)
@@ -68,14 +68,12 @@ module Perchfall
     def assert_not_internal_host!(uri, url)
       host = uri.hostname.to_s.downcase
 
-      if BLOCKED_HOSTNAMES.include?(host)
-        raise ArgumentError, internal_error(url)
-      end
+      raise ArgumentError, internal_error(url) if BLOCKED_HOSTNAMES.include?(host)
 
       addr = parse_ip(host)
-      if addr && blocked_ip?(addr)
-        raise ArgumentError, internal_error(url)
-      end
+      return unless addr && blocked_ip?(addr)
+
+      raise ArgumentError, internal_error(url)
     end
 
     def assert_not_internal_resolved_addresses!(uri, url)

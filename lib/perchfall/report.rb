@@ -63,20 +63,20 @@ module Perchfall
 
     def to_h
       {
-        status:         status,
-        url:            url,
-        scenario_name:  scenario_name,
-        timestamp:      timestamp.iso8601,
-        ok:             ok?,
-        http_status:    http_status,
-        duration_ms:    duration_ms,
-        network_errors:         network_errors.map(&:to_h),
+        status: status,
+        url: url,
+        scenario_name: scenario_name,
+        timestamp: timestamp.iso8601,
+        ok: ok?,
+        http_status: http_status,
+        duration_ms: duration_ms,
+        network_errors: network_errors.map(&:to_h),
         ignored_network_errors: ignored_network_errors.map(&:to_h),
-        console_errors:         console_errors.map(&:to_h),
+        console_errors: console_errors.map(&:to_h),
         ignored_console_errors: ignored_console_errors.map(&:to_h),
-        error:          error,
-        cache_profile:  cache_profile,
-        resources:      resources.map(&:to_h)
+        error: error,
+        cache_profile: cache_profile,
+        resources: resources.map(&:to_h)
       }
     end
 

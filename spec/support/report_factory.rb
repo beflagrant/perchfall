@@ -5,17 +5,17 @@
 module ReportFactory
   def build_report(overrides = {})
     defaults = {
-      status:         "ok",
-      url:            "https://example.com",
-      duration_ms:    100,
-      http_status:    200,
-      network_errors:         [],
+      status: "ok",
+      url: "https://example.com",
+      duration_ms: 100,
+      http_status: 200,
+      network_errors: [],
       ignored_network_errors: [],
-      console_errors:         [],
+      console_errors: [],
       ignored_console_errors: [],
-      error:          nil,
-      resources:      []
+      error: nil,
+      resources: []
     }
-    Perchfall::Report.new(**defaults.merge(overrides))
+    Perchfall::Report.new(**defaults, **overrides)
   end
 end
