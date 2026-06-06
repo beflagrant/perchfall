@@ -63,7 +63,7 @@ Perchfall.run(
 
 ### Retryable conditions
 
-`retry_on:` accepts an array of these named symbols:
+`retry_on:` accepts an array of these named symbols (or a single bare symbol):
 
 | Condition | Matches | Default on? |
 | --- | --- | --- |

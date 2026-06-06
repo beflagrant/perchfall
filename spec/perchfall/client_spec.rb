@@ -547,6 +547,24 @@ RSpec.describe Perchfall::Client do
         expect { client.run(url: "https://example.com", retry_on: Perchfall::RetryPolicy::CONDITIONS) }
           .not_to raise_error
       end
+
+      it "accepts a bare condition symbol (not just an array)" do
+        expect { client.run(url: "https://example.com", retry_on: :server_error) }
+          .not_to raise_error
+      end
+
+      it "rejects a bare unknown symbol" do
+        expect { client.run(url: "https://example.com", retry_on: :assertion) }
+          .to raise_error(ArgumentError, /retry_on/)
+        expect(recording_invoker.last_url).to be_nil
+      end
+    end
+
+    it "honours a bare condition symbol when deciding to retry" do
+      invoker = scripted_invoker(:load_error, :ok)
+      report = client_with(invoker).run(url: "https://example.com", retries: 1, retry_on: :load_error)
+      expect(invoker.calls).to eq(2)
+      expect(report).to be_ok
     end
   end
 end

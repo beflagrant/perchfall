@@ -121,26 +121,35 @@ module Perchfall
     # Runs up to retries+1 attempts, stopping early as soon as an attempt
     # succeeds or produces an outcome the caller did not opt to retry. The
     # backoff sleep happens outside @limiter.acquire so no browser slot is held
-    # while waiting. ScriptError is captured so it can be retried; every other
-    # exception propagates on the spot.
+    # while waiting.
+    #
+    # A retryable ScriptError is captured as the attempt's *outcome* so the
+    # report path and the exception path share one decision: on the final
+    # attempt, or when retry_on does not cover the outcome, finish — re-raising
+    # if the outcome was an exception, otherwise returning the report.
     def run_with_retries(opts, profile)
       attempt = 0
       loop do
         attempt += 1
-        last = attempt > opts.retries
-        begin
-          report = run_once(opts, profile)
-        rescue Errors::ScriptError => e
-          raise if last || !RetryPolicy.retryable?(e, opts.retry_on)
+        outcome = attempt_run(opts, profile)
 
-          backoff(opts.retry_backoff_ms, attempt)
-          next
+        if attempt > opts.retries || !RetryPolicy.retryable?(outcome, opts.retry_on)
+          raise outcome if outcome.is_a?(Exception)
+
+          return outcome
         end
-
-        return report if last || !RetryPolicy.retryable?(report, opts.retry_on)
 
         backoff(opts.retry_backoff_ms, attempt)
       end
+    end
+
+    # One attempt. A ScriptError is returned as a value so it can flow through
+    # the same retry decision as a not-ok report; every other exception
+    # propagates immediately and is never retried.
+    def attempt_run(opts, profile)
+      run_once(opts, profile)
+    rescue Errors::ScriptError => e
+      e
     end
 
     def run_once(opts, profile)
@@ -242,12 +251,15 @@ module Perchfall
     def validate_retry_on!(value)
       return if value.respond_to?(:call)
 
-      unknown = Array(value) - RetryPolicy::CONDITIONS
-      return if value.is_a?(Array) && unknown.empty?
+      # A bare condition symbol is accepted too — RetryPolicy.retryable? wraps
+      # retry_on in Array(...), so [:server_error] and :server_error behave
+      # identically; validation must not reject the form the policy honours.
+      conditions = value.is_a?(Array) ? value : [value]
+      return if conditions.all? { |condition| RetryPolicy::CONDITIONS.include?(condition) }
 
       raise ArgumentError,
-            "retry_on must be a callable or an array of #{RetryPolicy::CONDITIONS.join(", ")}. " \
-            "Got: #{value.inspect}"
+            "retry_on must be a callable, a condition symbol, or an array of " \
+            "#{RetryPolicy::CONDITIONS.join(", ")}. Got: #{value.inspect}"
     end
   end
 end
