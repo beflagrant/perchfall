@@ -201,8 +201,9 @@ it's a back-pressure signal to back off at the caller level.
 
 ```sh
 bundle install
-bundle exec rspec              # ~0.5s, no browser or Node required (288 examples)
-RUN_JS_SPECS=true bundle exec rspec  # includes check.js integration specs (306 examples)
+bundle exec rspec              # ~0.5s, no browser or Node required (292 examples)
+RUN_JS_SPECS=true bundle exec rspec  # includes check.js integration specs (310 examples)
+bundle exec rubocop            # lint; enforced in CI
 bin/console                    # IRB with perchfall loaded
 ```
 
