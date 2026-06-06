@@ -6,7 +6,7 @@ RSpec.describe Perchfall::CommandRunner do
   subject(:runner) { described_class.new }
 
   it "returns a successful result for a zero-exit command" do
-    result = runner.call(["echo", "hello"])
+    result = runner.call(%w[echo hello])
     expect(result.stdout.strip).to eq("hello")
     expect(result.exit_status).to eq(0)
     expect(result).to be_success

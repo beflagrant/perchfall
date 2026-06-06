@@ -45,8 +45,10 @@ module Perchfall
 
         while @count >= @limit
           remaining = deadline - Process.clock_gettime(Process::CLOCK_MONOTONIC)
-          raise Errors::ConcurrencyLimitError,
-                "Concurrency limit of #{@limit} reached; timeout of #{@timeout_s}s exceeded" if remaining <= 0
+          if remaining <= 0
+            raise Errors::ConcurrencyLimitError,
+                  "Concurrency limit of #{@limit} reached; timeout of #{@timeout_s}s exceeded"
+          end
 
           @condvar.wait(@mutex, remaining)
         end

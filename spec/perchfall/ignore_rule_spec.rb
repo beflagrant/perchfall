@@ -21,7 +21,9 @@ RSpec.describe Perchfall::IgnoreRule do
     end
 
     context "with regex pattern" do
-      subject(:rule) { described_class.new(pattern: /google-analytics\.com/, type: "net::ERR_ABORTED", target: :network) }
+      subject(:rule) do
+        described_class.new(pattern: /google-analytics\.com/, type: "net::ERR_ABORTED", target: :network)
+      end
 
       it "matches when primary matches the regex and type matches" do
         expect(rule.match?("https://www.google-analytics.com/g/collect", "net::ERR_ABORTED")).to be true

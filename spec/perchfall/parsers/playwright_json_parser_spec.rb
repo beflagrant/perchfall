@@ -145,7 +145,8 @@ RSpec.describe Perchfall::Parsers::PlaywrightJsonParser do
         it "returns resources above the threshold" do
           big = resource_entry(transfer_size: 300_000)
           json = ok_json(resources: [big])
-          report = parser.parse(json, timestamp: fixed_time, capture_resources: true, large_resource_threshold_bytes: 200_000)
+          report = parser.parse(json, timestamp: fixed_time, capture_resources: true,
+                                      large_resource_threshold_bytes: 200_000)
           expect(report.resources.length).to eq(1)
           expect(report.resources.first).to be_a(Perchfall::Resource)
         end
@@ -153,14 +154,16 @@ RSpec.describe Perchfall::Parsers::PlaywrightJsonParser do
         it "excludes resources below the threshold" do
           small = resource_entry(transfer_size: 10_000)
           json  = ok_json(resources: [small])
-          report = parser.parse(json, timestamp: fixed_time, capture_resources: true, large_resource_threshold_bytes: 200_000)
+          report = parser.parse(json, timestamp: fixed_time, capture_resources: true,
+                                      large_resource_threshold_bytes: 200_000)
           expect(report.resources).to be_empty
         end
 
         it "includes resources with nil transfer_size (unknown, cannot prove small)" do
           unknown = resource_entry(transfer_size: nil)
           json = ok_json(resources: [unknown])
-          report = parser.parse(json, timestamp: fixed_time, capture_resources: true, large_resource_threshold_bytes: 200_000)
+          report = parser.parse(json, timestamp: fixed_time, capture_resources: true,
+                                      large_resource_threshold_bytes: 200_000)
           expect(report.resources.length).to eq(1)
           expect(report.resources.first.transfer_size).to be_nil
         end
@@ -171,7 +174,7 @@ RSpec.describe Perchfall::Parsers::PlaywrightJsonParser do
             content_type: "image/png", transfer_size: 500_000, resource_type: "image"
           )
           report = parser.parse(ok_json(resources: [entry]), timestamp: fixed_time,
-                                capture_resources: true, large_resource_threshold_bytes: 200_000)
+                                                             capture_resources: true, large_resource_threshold_bytes: 200_000)
           r = report.resources.first
           expect(r.url).to eq("https://example.com/bg.png")
           expect(r.http_method).to eq("GET")
@@ -182,7 +185,8 @@ RSpec.describe Perchfall::Parsers::PlaywrightJsonParser do
         end
 
         it "returns empty array when resources key is absent (backwards compat)" do
-          report = parser.parse(ok_json, timestamp: fixed_time, capture_resources: true, large_resource_threshold_bytes: 200_000)
+          report = parser.parse(ok_json, timestamp: fixed_time, capture_resources: true,
+                                         large_resource_threshold_bytes: 200_000)
           expect(report.resources).to be_empty
         end
 

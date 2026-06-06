@@ -89,32 +89,32 @@ RSpec.describe Perchfall::Report do
       ne = Perchfall::NetworkError.new(url: "https://shop.app/pay", http_method: "GET", failure: "HTTP 403")
       report = build_report(ignored_network_errors: [ne])
       expect(report.to_h[:ignored_network_errors]).to eq([
-        { url: "https://shop.app/pay", method: "GET", failure: "HTTP 403" }
-      ])
+                                                           { url: "https://shop.app/pay", method: "GET", failure: "HTTP 403" }
+                                                         ])
     end
 
     it "serializes ignored_console_errors as plain hashes" do
       ce = Perchfall::ConsoleError.new(type: "error", text: "boom", location: "https://example.com:10:1")
       report = build_report(ignored_console_errors: [ce])
       expect(report.to_h[:ignored_console_errors]).to eq([
-        { type: "error", text: "boom", location: "https://example.com:10:1" }
-      ])
+                                                           { type: "error", text: "boom", location: "https://example.com:10:1" }
+                                                         ])
     end
 
     it "serializes network_errors as plain hashes" do
       ne = Perchfall::NetworkError.new(url: "https://cdn.example.com/x.js", http_method: "GET", failure: "timeout")
       report = build_report(network_errors: [ne])
       expect(report.to_h[:network_errors]).to eq([
-        { url: "https://cdn.example.com/x.js", method: "GET", failure: "timeout" }
-      ])
+                                                   { url: "https://cdn.example.com/x.js", method: "GET", failure: "timeout" }
+                                                 ])
     end
 
     it "serializes console_errors as plain hashes" do
       ce = Perchfall::ConsoleError.new(type: "error", text: "boom", location: "https://example.com:10:1")
       report = build_report(console_errors: [ce])
       expect(report.to_h[:console_errors]).to eq([
-        { type: "error", text: "boom", location: "https://example.com:10:1" }
-      ])
+                                                   { type: "error", text: "boom", location: "https://example.com:10:1" }
+                                                 ])
     end
 
     it "includes scenario_name when provided" do

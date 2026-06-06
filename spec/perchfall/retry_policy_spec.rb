@@ -91,7 +91,7 @@ RSpec.describe Perchfall::RetryPolicy do
     it "retries only when EVERY reason is opted in" do
       r = report(status: "error", error: "net::ERR_TIMED_OUT", network_errors: [net_error("HTTP 503")])
       expect(described_class.retryable?(r, [:load_error])).to be(false)
-      expect(described_class.retryable?(r, [:load_error, :server_error])).to be(true)
+      expect(described_class.retryable?(r, %i[load_error server_error])).to be(true)
     end
 
     it "never retries a report whose only failure is a console error" do
@@ -120,7 +120,10 @@ RSpec.describe Perchfall::RetryPolicy do
 
     it "passes the raw outcome (report or exception) to the proc" do
       seen = []
-      probe = ->(outcome) { seen << outcome; false }
+      probe = lambda { |outcome|
+        seen << outcome
+        false
+      }
       r = report
       described_class.retryable?(r, probe)
       described_class.retryable?(Perchfall::Errors::ScriptError.new("x"), probe)

@@ -11,10 +11,10 @@ RSpec.describe Perchfall::ErrorFilter do
     Perchfall::ConsoleError.new(type: type, text: text, location: "https://example.com:10:5")
   end
 
-  let(:network_rule)  { Perchfall::IgnoreRule.new(pattern: "shop.app",      type: "HTTP 403",        target: :network) }
+  let(:network_rule)  { Perchfall::IgnoreRule.new(pattern: "shop.app", type: "HTTP 403", target: :network) }
   let(:console_rule)  { Perchfall::IgnoreRule.new(pattern: "ReferenceError", type: "error",           target: :console) }
   let(:aborted_rule)  { Perchfall::IgnoreRule.new(pattern: //,              type: "net::ERR_ABORTED", target: :network) }
-  let(:all_rule)      { Perchfall::IgnoreRule.new(pattern: "GTM",           type: "*",               target: :all) }
+  let(:all_rule)      { Perchfall::IgnoreRule.new(pattern: "GTM",           type: "*", target: :all) }
 
   subject(:filter) { described_class.new(rules: [network_rule, console_rule, aborted_rule, all_rule]) }
 

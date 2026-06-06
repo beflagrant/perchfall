@@ -15,33 +15,41 @@ module Perchfall
 
       DEFAULT_LARGE_RESOURCE_THRESHOLD_BYTES = 200_000
 
-      def parse(raw_json, timestamp:, scenario_name: nil, original_url: nil, cache_profile: nil, capture_resources: false, large_resource_threshold_bytes: DEFAULT_LARGE_RESOURCE_THRESHOLD_BYTES)
+      def parse(raw_json, timestamp:, scenario_name: nil, original_url: nil, cache_profile: nil,
+                capture_resources: false, large_resource_threshold_bytes: DEFAULT_LARGE_RESOURCE_THRESHOLD_BYTES)
         data = JSON.parse(raw_json, symbolize_names: true)
-        build_report(data, scenario_name: scenario_name, timestamp: timestamp, original_url: original_url, cache_profile: cache_profile, capture_resources: capture_resources, large_resource_threshold_bytes: large_resource_threshold_bytes)
+        build_report(data, scenario_name: scenario_name, timestamp: timestamp, original_url: original_url,
+                           cache_profile: cache_profile, capture_resources: capture_resources, large_resource_threshold_bytes: large_resource_threshold_bytes)
       rescue JSON::ParserError => e
         raise Errors::ParseError, "Invalid JSON from Playwright script: #{e.message}"
       end
 
       private
 
-      def build_report(data, scenario_name:, timestamp:, original_url: nil, cache_profile: nil, capture_resources: false, large_resource_threshold_bytes: DEFAULT_LARGE_RESOURCE_THRESHOLD_BYTES)
+      def build_report(data, scenario_name:, timestamp:, original_url: nil, cache_profile: nil,
+                       capture_resources: false, large_resource_threshold_bytes: DEFAULT_LARGE_RESOURCE_THRESHOLD_BYTES)
         net_filtered     = @filter.filter_network(parse_network_errors(data.fetch(:network_errors, [])))
         console_filtered = @filter.filter_console(parse_console_errors(data.fetch(:console_errors, [])))
 
         Report.new(
-          status:                 data.fetch(:status),
-          url:                    original_url || data.fetch(:url),
-          duration_ms:            data.fetch(:duration_ms),
-          http_status:            data[:http_status],
-          network_errors:         net_filtered[:kept],
+          status: data.fetch(:status),
+          url: original_url || data.fetch(:url),
+          duration_ms: data.fetch(:duration_ms),
+          http_status: data[:http_status],
+          network_errors: net_filtered[:kept],
           ignored_network_errors: net_filtered[:ignored],
-          console_errors:         console_filtered[:kept],
+          console_errors: console_filtered[:kept],
           ignored_console_errors: console_filtered[:ignored],
-          error:                  data[:error],
-          scenario_name:          scenario_name,
-          timestamp:              timestamp,
-          cache_profile:          cache_profile,
-          resources:              capture_resources ? parse_resources(data.fetch(:resources, []), threshold_bytes: large_resource_threshold_bytes) : []
+          error: data[:error],
+          scenario_name: scenario_name,
+          timestamp: timestamp,
+          cache_profile: cache_profile,
+          resources: if capture_resources
+                       parse_resources(data.fetch(:resources, []),
+                                       threshold_bytes: large_resource_threshold_bytes)
+                     else
+                       []
+                     end
         )
       rescue KeyError => e
         raise Errors::ParseError, "Playwright JSON missing required field: #{e.message}"
@@ -50,9 +58,9 @@ module Perchfall
       def parse_network_errors(raw)
         raw.map do |item|
           NetworkError.new(
-            url:         item.fetch(:url),
+            url: item.fetch(:url),
             http_method: item.fetch(:method),
-            failure:     item.fetch(:failure)
+            failure: item.fetch(:failure)
           )
         end
       rescue KeyError => e
@@ -62,8 +70,8 @@ module Perchfall
       def parse_console_errors(raw)
         raw.map do |item|
           ConsoleError.new(
-            type:     item.fetch(:type),
-            text:     item.fetch(:text),
+            type: item.fetch(:type),
+            text: item.fetch(:text),
             location: item.fetch(:location)
           )
         end
@@ -75,11 +83,12 @@ module Perchfall
         raw.filter_map do |item|
           size = item[:transfer_size]
           next if size && size < threshold_bytes
+
           Resource.new(
-            url:           item[:url],
-            http_method:   item[:method],
-            status:        item[:status],
-            content_type:  item[:content_type],
+            url: item[:url],
+            http_method: item[:method],
+            status: item[:status],
+            content_type: item[:content_type],
             transfer_size: size,
             resource_type: item[:resource_type]
           )

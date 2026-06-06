@@ -25,10 +25,11 @@ module Perchfall
     VALID_WAIT_UNTIL = %w[load domcontentloaded networkidle commit].freeze
 
     CACHE_PROFILES = {
-      query_bust: { bust_url: true,  headers: {}.freeze }.freeze,
-      warm:       { bust_url: false, headers: {}.freeze }.freeze,
-      no_cache:   { bust_url: false, headers: { "Cache-Control" => "no-cache" }.freeze }.freeze,
-      no_store:   { bust_url: false, headers: { "Cache-Control" => "no-store, no-cache", "Pragma" => "no-cache" }.freeze }.freeze
+      query_bust: { bust_url: true, headers: {}.freeze }.freeze,
+      warm: { bust_url: false, headers: {}.freeze }.freeze,
+      no_cache: { bust_url: false, headers: { "Cache-Control" => "no-cache" }.freeze }.freeze,
+      no_store: { bust_url: false,
+                  headers: { "Cache-Control" => "no-store, no-cache", "Pragma" => "no-cache" }.freeze }.freeze
     }.freeze
 
     # Headers that could carry credentials, impersonate infrastructure, or
@@ -69,8 +70,8 @@ module Perchfall
     # @raise [Errors::InvocationError] if Node could not be started
     # @raise [Errors::ScriptError] if the Node script exited non-zero
     # @raise [Errors::ParseError] if the script output was not valid JSON
-    def run(url:, **opts)
-      invoke(url: url, **opts)
+    def run(url:, **)
+      invoke(url: url, **)
     end
 
     # Like #run, but raises PageLoadError if the report is not ok.
@@ -78,9 +79,10 @@ module Perchfall
     #
     # @return [Report] only if report.ok?
     # @raise [Errors::PageLoadError] if the page failed to load or has unignored errors
-    def run!(url:, **opts)
-      report = invoke(url: url, **opts)
+    def run!(url:, **)
+      report = invoke(url: url, **)
       raise Errors::PageLoadError.new(report) unless report.ok?
+
       report
     end
 
@@ -91,7 +93,7 @@ module Perchfall
       :timestamp, :cache_profile, :capture_resources, :large_resource_threshold_bytes,
       :retries, :retry_on, :retry_backoff_ms
     ) do
-      def self.from_kwargs(url:, ignore: [], wait_until: 'load', timeout_ms: 30_000,
+      def self.from_kwargs(url:, ignore: [], wait_until: "load", timeout_ms: 30_000,
                            scenario_name: nil, timestamp: Time.now.utc,
                            cache_profile: :query_bust, capture_resources: false,
                            large_resource_threshold_bytes: DEFAULT_RESOURCE_THRESHOLD,
@@ -107,8 +109,8 @@ module Perchfall
 
     private
 
-    def invoke(url:, **kwargs)
-      opts    = RunOptions.from_kwargs(url: url, **kwargs)
+    def invoke(url:, **)
+      opts    = RunOptions.from_kwargs(url: url, **)
       profile = resolve_cache_profile!(opts.cache_profile)
       validate_wait_until!(opts.wait_until)
       validate_timeout_ms!(opts.timeout_ms)
@@ -184,8 +186,6 @@ module Perchfall
       result
     end
 
-    private
-
     def validate_wait_until!(value)
       return if VALID_WAIT_UNTIL.include?(value)
 
@@ -196,7 +196,8 @@ module Perchfall
     def resolve_cache_profile!(profile)
       if profile.is_a?(Symbol)
         CACHE_PROFILES.fetch(profile) do
-          raise ArgumentError, "cache_profile must be one of #{CACHE_PROFILES.keys.join(", ")} or a Hash with :headers. Got: #{profile.inspect}"
+          raise ArgumentError,
+                "cache_profile must be one of #{CACHE_PROFILES.keys.join(", ")} or a Hash with :headers. Got: #{profile.inspect}"
         end
       else
         headers = profile.fetch(:headers, {})
@@ -207,12 +208,12 @@ module Perchfall
 
     def validate_custom_headers!(headers)
       headers.each_key do |name|
-        if FORBIDDEN_HEADERS.include?(name.to_s.downcase)
-          raise ArgumentError,
-                "cache_profile contains a forbidden header: #{name.inspect}. " \
-                "Headers that carry credentials or influence routing (#{FORBIDDEN_HEADERS.join(", ")}) " \
-                "may not be set via cache_profile."
-        end
+        next unless FORBIDDEN_HEADERS.include?(name.to_s.downcase)
+
+        raise ArgumentError,
+              "cache_profile contains a forbidden header: #{name.inspect}. " \
+              "Headers that carry credentials or influence routing (#{FORBIDDEN_HEADERS.join(", ")}) " \
+              "may not be set via cache_profile."
       end
     end
 
